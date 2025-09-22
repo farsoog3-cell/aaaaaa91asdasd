@@ -3,20 +3,21 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Molfa — تحويل الصورة إلى طرز (Cross-Stitch)</title>
+<title>Molfa — تحويل الصورة إلى طرز أبيض/أسود (شبكة تطريز حقيقية)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body{font-family:Inter,system-ui,Arial; background:#f3f4f6; color:#111;}
   .mono{font-family:ui-monospace,monospace;}
   .svg-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
   .svg-wrap svg,.svg-wrap object{width:100%;height:100%;}
-  header p{font-size:0.9rem; opacity:0.9;}
+  header p{font-size:0.95rem; opacity:0.95;}
+  input[type="range"]{width:100%}
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
 <header class="bg-indigo-700 text-white py-4 shadow text-center">
-  <h1 class="text-xl font-semibold">Molfa — صورة → طرز (Cross-Stitch) — تصدير SVG/PNG/DST/DTE/DSE</h1>
-  <p>الناتج: معاينة بالصورة + غرزة X ملونة فوق كل خانة. ملفات التصدير تحتوي الغرز فقط (لماكينات التطريز).</p>
+  <h1 class="text-xl font-semibold">Molfa — صورة → شبكة تطريز (أبيض/أسود) + تصدير</h1>
+  <p>ينتج مخطط تطريز أبيض/أسود احترافي؛ المعاينة تبيّن كيف سيظهر المخطط، والملفات تصدّر نفس المخطط للماكينة.</p>
 </header>
 
 <main class="container mx-auto p-4 md:p-6 flex-grow">
@@ -25,41 +26,39 @@
       <div>
         <label class="block font-medium">اختر صورة</label>
         <input id="file" type="file" accept="image/*" class="w-full p-2 border rounded"/>
-        
+
         <div class="mt-3">
-          <label class="text-sm block mb-1">حجم الخلية (px) — cell size</label>
-          <input id="cellSize" type="number" min="4" max="32" value="8" class="w-full p-2 border rounded"/>
-          <div class="text-xs text-gray-500 mt-1">كل خانة ستُطرَز بصليب (X). قيمة أصغر → طراز أدق.</div>
+          <label class="text-sm block mb-1">حجم الخلية (px)</label>
+          <input id="cellSize" type="number" min="4" max="40" value="8" class="w-full p-2 border rounded"/>
+          <div class="text-xs text-gray-500 mt-1">كل خانة ستُقرّر أبيض/أسود حسب العتبة وتُطرَز إذا كانت سوداء.</div>
         </div>
 
         <div class="mt-3">
-          <label class="text-sm block mb-1">عدد ألوان الخيط (k)</label>
-          <input id="kcolors" type="number" min="1" max="12" value="6" class="w-full p-2 border rounded"/>
-          <div class="text-xs text-gray-500 mt-1">كم مجموعة ألوان ستُستخدم لتقليل الألوان (K-means).</div>
+          <label class="text-sm block mb-1">عتبة التحويل إلى الأبيض/أسود (0-255)</label>
+          <input id="bwThreshold" type="range" min="0" max="255" value="128"/>
+          <div class="text-xs text-gray-500 mt-1">قيمة أعلى → أكثر خلايا تصبح بيضاء (أقل غرز).</div>
         </div>
 
         <div class="mt-3">
-          <label class="text-sm block mb-1">طول الغرزة (px)</label>
+          <label class="text-sm block mb-1">طول الغرزة داخل ضلع X (px)</label>
           <input id="stitchStep" type="number" min="1" max="16" value="4" class="w-full p-2 border rounded"/>
-          <div class="text-xs text-gray-500 mt-1">المسافة بين نقاط على الخط أثناء بناء كل ضلع من الـX.</div>
         </div>
 
         <div class="mt-3">
           <label class="text-sm block mb-1">مقياس التصدير (px → 0.1mm)</label>
           <input id="exportScale" type="number" value="0.2" step="0.05" min="0.05" max="5" class="w-full p-2 border rounded"/>
-          <div class="text-xs text-gray-500 mt-1">مثال: 0.2 يناسب غالباً.</div>
         </div>
 
         <div class="mt-4 flex gap-2">
-          <button id="process" class="flex-1 bg-indigo-600 text-white py-2 rounded">🔧 توليد طرز وتصدير</button>
+          <button id="process" class="flex-1 bg-indigo-600 text-white py-2 rounded">🔧 توليد وتصدير</button>
         </div>
 
         <div class="mt-3 grid grid-cols-2 gap-2">
-          <button id="downloadSvg" class="hidden bg-blue-600 text-white py-2 rounded">⬇️ SVG</button>
-          <button id="downloadDst" class="hidden bg-green-600 text-white py-2 rounded">⬇️ DST</button>
-          <button id="downloadDte" class="hidden bg-pink-600 text-white py-2 rounded">⬇️ DTE</button>
-          <button id="downloadDse" class="hidden bg-yellow-600 text-white py-2 rounded">⬇️ DSE</button>
-          <button id="downloadPng" class="hidden bg-gray-700 text-white py-2 rounded">⬇️ PNG</button>
+          <button id="downloadSvg" class="hidden bg-blue-600 text-white py-2 rounded">⬇️ SVG (مع الخلفية B/W)</button>
+          <button id="downloadDst" class="hidden bg-green-600 text-white py-2 rounded">⬇️ DST (غرز فقط)</button>
+          <button id="downloadDte" class="hidden bg-pink-600 text-white py-2 rounded">⬇️ DTE (غرز فقط)</button>
+          <button id="downloadDse" class="hidden bg-yellow-600 text-white py-2 rounded">⬇️ DSE (غرز فقط)</button>
+          <button id="downloadPng" class="hidden bg-gray-700 text-white py-2 rounded">⬇️ PNG (مع الخلفية B/W)</button>
         </div>
       </div>
 
@@ -79,66 +78,25 @@ function forceDownload(blob,name){ const url=URL.createObjectURL(blob); const a=
 
 function makeWorkerFromFunc(fn){ const src = fn.toString(); const blob=new Blob(['('+src+')()'],{type:'application/javascript'}); return new Worker(URL.createObjectURL(blob)); }
 
-/* Worker: quantize colors, build cross-stitch X shape per cell, produce ordered stitch points, export bytes */
+/* Worker: produce monochrome (B/W) cell grid and X-stitches per dark cell, export same pattern */
 const worker = makeWorkerFromFunc(function(){
-  // simple K-means color quantization
-  function quantize(samples, k, iter=6){
-    if(samples.length === 0) return [];
-    k = Math.max(1, Math.min(k, samples.length));
-    const centers = [];
-    for(let i=0;i<k;i++) centers.push(samples[Math.floor(Math.random()*samples.length)].slice());
-    for(let it=0; it<iter; it++){
-      const sums = Array.from({length:k}, ()=>[0,0,0,0]);
-      for(const s of samples){
-        let best=0, bd=Infinity;
-        for(let j=0;j<k;j++){
-          const c = centers[j];
-          const d = (s[0]-c[0])**2 + (s[1]-c[1])**2 + (s[2]-c[2])**2;
-          if(d<bd){ bd=d; best=j; }
-        }
-        sums[best][0]+=s[0]; sums[best][1]+=s[1]; sums[best][2]+=s[2]; sums[best][3]+=1;
-      }
-      for(let j=0;j<k;j++){
-        if(sums[j][3]>0){
-          centers[j][0] = Math.round(sums[j][0]/sums[j][3]);
-          centers[j][1] = Math.round(sums[j][1]/sums[j][3]);
-          centers[j][2] = Math.round(sums[j][2]/sums[j][3]);
-        }
-      }
-    }
-    return centers;
-  }
-
-  // nearest color index
-  function nearestIndex(c, centers){
-    let best=0, bd=Infinity;
-    for(let i=0;i<centers.length;i++){
-      const cc = centers[i];
-      const d = (c[0]-cc[0])**2 + (c[1]-cc[1])**2 + (c[2]-cc[2])**2;
-      if(d<bd){ bd=d; best=i; }
-    }
-    return best;
-  }
-
-  // Build Tajima-like DST bytes
   function buildDstBytes(points, exportScale, label){
     const header = new Uint8Array(512);
     const name = ('LA:'+label+'\n').slice(0,80);
     for(let i=0;i<name.length;i++) header[i] = name.charCodeAt(i);
     const body = [];
-    let prevx=0, prevy=0;
-    function coord(px){ return Math.round(px * exportScale); }
-    for(const pt of points){
-      const x = coord(pt[0]), y = coord(pt[1]);
+    let prevx = 0, prevy = 0;
+    function toCoord(px){ return Math.round(px * exportScale); }
+    for(const p of points){
+      const x = toCoord(p[0]), y = toCoord(p[1]);
       let dx = x - prevx, dy = y - prevy;
-      // split large moves
       while(Math.abs(dx) > 127 || Math.abs(dy) > 127){
         const sx = Math.max(-127, Math.min(127, dx));
         const sy = Math.max(-127, Math.min(127, dy));
-        body.push((sx & 0xFF), (sy & 0xFF), 0x01); // 0x01 treat as jump marker
+        body.push((sx & 0xFF), (sy & 0xFF), 0x01); // jump/chunk
         dx -= sx; dy -= sy; prevx += sx; prevy += sy;
       }
-      body.push((dx & 0xFF), (dy & 0xFF), 0x03); // 0x03 normal stitch
+      body.push((dx & 0xFF), (dy & 0xFF), 0x03); // normal stitch
       prevx = x; prevy = y;
     }
     body.push(0x00,0x00,0xF3);
@@ -148,28 +106,25 @@ const worker = makeWorkerFromFunc(function(){
   }
 
   onmessage = async (ev) => {
-    const { dataURL, cellSize, kcolors, stitchStep, exportScale } = ev.data;
+    const {dataURL, cellSize, bwThreshold, stitchStep, exportScale} = ev.data;
     try{
-      const img = await createImageBitmap(await (await fetch(dataURL)).blob());
-      // Determine work size based on desired cell size and keep aspect ratio; width chosen to keep whole cells
-      const cell = Math.max(4, Math.min(32, Number(cellSize) || 8));
-      const gridW = Math.floor(img.width / cell) || 1;
-      const gridH = Math.floor(img.height / cell) || 1;
-      const w = gridW * cell;
-      const h = gridH * cell;
-
-      // draw original at working size on OffscreenCanvas
+      const imgBlob = await (await fetch(dataURL)).blob();
+      const img = await createImageBitmap(imgBlob);
+      // make working canvas sized to whole cells
+      const cell = Math.max(4, Math.min(48, Number(cellSize)||8));
+      const gridW = Math.max(1, Math.floor(img.width / cell));
+      const gridH = Math.max(1, Math.floor(img.height / cell));
+      const w = gridW * cell, h = gridH * cell;
       const off = new OffscreenCanvas(w,h);
       const ctx = off.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
+
+      // compute average luminance per cell -> decide black/white
       const id = ctx.getImageData(0,0,w,h);
       const d = id.data;
-
-      // sample cell average colors
-      const samples = [];
-      const cellColors = new Array(gridH);
+      const cells = [];
       for(let gy=0; gy<gridH; gy++){
-        cellColors[gy] = new Array(gridW);
+        const row = [];
         for(let gx=0; gx<gridW; gx++){
           let sr=0, sg=0, sb=0, cnt=0;
           for(let yy=gy*cell; yy<(gy+1)*cell; yy++){
@@ -178,113 +133,141 @@ const worker = makeWorkerFromFunc(function(){
               sr += d[i]; sg += d[i+1]; sb += d[i+2]; cnt++;
             }
           }
-          const ar = Math.round(sr/cnt), ag = Math.round(sg/cnt), ab = Math.round(sb/cnt);
-          samples.push([ar,ag,ab]);
-          cellColors[gy][gx] = [ar,ag,ab];
+          const lum = Math.round((0.299*(sr/cnt) + 0.587*(sg/cnt) + 0.114*(sb/cnt)));
+          const black = lum < (bwThreshold|0) ? 1 : 0;
+          row.push({lum, black});
         }
+        cells.push(row);
       }
 
-      // quantize palette
-      const k = Math.max(1, Math.min(12, Number(kcolors) || 6));
-      const palette = quantize(samples, k, 8);
-      if(palette.length === 0) palette.push([0,0,0]);
-
-      // Build cross-stitch X shapes for each cell: two diagonals crossing center
-      // We'll create stitch points along each diagonal with spacing = stitchStep
-      const step = Math.max(1, Math.min(16, Number(stitchStep) || 4));
-      const stitchPoints = []; // list of {x,y,colorIndex}
+      // build X-stitches for black cells: for each black cell, two diagonals with points spaced by stitchStep
+      const step = Math.max(1, Math.min(16, Number(stitchStep)||4));
+      const stitchPoints = [];
       for(let gy=0; gy<gridH; gy++){
         for(let gx=0; gx<gridW; gx++){
-          const col = cellColors[gy][gx];
-          const ci = nearestIndex(col, palette);
-          // center and corners
+          if(!cells[gy][gx].black) continue;
           const x0 = gx*cell, y0 = gy*cell;
           const x1 = x0 + cell, y1 = y0 + cell;
-          // diagonal 1: (x0,y0) -> (x1,y1)
+          // diagonal 1
           const dx = x1 - x0, dy = y1 - y0;
-          const l = Math.hypot(dx,dy);
-          const nsteps = Math.max(1, Math.ceil(l/step));
-          for(let s=0;s<=nsteps;s++){
-            const t = s/nsteps;
-            const xx = x0 + dx*t;
-            const yy = y0 + dy*t;
-            stitchPoints.push([xx,yy,ci]);
+          const L = Math.hypot(dx,dy);
+          const n = Math.max(1, Math.ceil(L/step));
+          for(let i=0;i<=n;i++){
+            const t = i/n;
+            stitchPoints.push([x0 + dx*t, y0 + dy*t]);
           }
-          // diagonal 2: (x1,y0) -> (x0,y1)
+          // diagonal 2
           const dx2 = x0 - x1, dy2 = y1 - y0;
-          const l2 = Math.hypot(dx2,dy2);
-          const nsteps2 = Math.max(1, Math.ceil(l2/step));
-          for(let s=0;s<=nsteps2;s++){
-            const t = s/nsteps2;
-            const xx = x1 + dx2*t;
-            const yy = y0 + dy2*t;
-            stitchPoints.push([xx,yy,ci]);
+          const L2 = Math.hypot(dx2,dy2);
+          const n2 = Math.max(1, Math.ceil(L2/step));
+          for(let i=0;i<=n2;i++){
+            const t = i/n2;
+            stitchPoints.push([x1 + dx2*t, y0 + dy2*t]);
           }
         }
       }
 
-      // For DST we need a single ordered list of points; naive approach: row-major order already reasonable
-      // We'll compress consecutive duplicate points
+      if(stitchPoints.length < 2){
+        // fallback small cross to avoid empty export
+        stitchPoints.push([0,0],[10,10]);
+      }
+
+      // compress near-duplicates
       const merged = [];
       for(const p of stitchPoints){
-        if(merged.length === 0) merged.push(p);
+        if(merged.length===0) merged.push(p);
         else {
           const last = merged[merged.length-1];
-          if(Math.hypot(last[0]-p[0], last[1]-p[1]) >= 0.5) merged.push(p);
+          if(Math.hypot(last[0]-p[0], last[1]-p[1]) >= 0.8) merged.push(p);
         }
       }
 
-      // Build DST/DTE/DSE arrays (coordinates in px * exportScale)
-      // For machine files we do not include color info (machines expect color-change commands separately),
-      // but points are ordered — color info could be exported as separate color-run metadata if needed.
-      const dstArr = buildDstBytes(merged, Number(exportScale) || 0.2, 'MOLFA_DST');
-      const dteArr = buildDstBytes(merged, Number(exportScale) || 0.2, 'MOLFA_DTE');
-      const dseArr = buildDstBytes(merged, Number(exportScale) || 0.2, 'MOLFA_DSE');
+      // Build machine arrays
+      const dstArr = buildDstBytes(merged, Number(exportScale)||0.2, 'MOLFA_DST');
+      const dteArr = buildDstBytes(merged, Number(exportScale)||0.2, 'MOLFA_DTE');
+      const dseArr = buildDstBytes(merged, Number(exportScale)||0.2, 'MOLFA_DSE');
 
-      // Build SVG: image background + colored X stitches overlay (one polyline per diagonal pair or small strokes)
-      // We'll draw small short line segments with stroke matching palette color
+      // Build SVG preview: show B/W image (we recreate B/W raster) + black X stitches on top
+      // Create B/W raster dataurl
+      const bwCanvas = new OffscreenCanvas(w,h);
+      const bwCtx = bwCanvas.getContext('2d');
+      // fill with white then draw pixel-level B/W
+      bwCtx.fillStyle = 'white'; bwCtx.fillRect(0,0,w,h);
+      const bwImgData = bwCtx.getImageData(0,0,w,h);
+      const bwD = bwImgData.data;
+      for(let gy=0; gy<gridH; gy++){
+        for(let gx=0; gx<gridW; gx++){
+          const blk = cells[gy][gx].black;
+          for(let yy=gy*cell; yy<(gy+1)*cell; yy++){
+            for(let xx=gx*cell; xx<(gx+1)*cell; xx++){
+              const idx = (yy*w + xx)*4;
+              const v = blk ? 0 : 255;
+              bwD[idx] = v; bwD[idx+1] = v; bwD[idx+2] = v; bwD[idx+3] = 255;
+            }
+          }
+        }
+      }
+      bwCtx.putImageData(bwImgData,0,0);
+      const bwDataURL = bwCanvas.convertToBlob ? await bwCanvas.convertToBlob({type:'image/png'}) : null;
+      let bwDataURLstring = '';
+      if(bwDataURL){
+        // convert to data URL via FileReader (OffscreenCanvas -> blob)
+        const r = new FileReader();
+        const d = await new Promise((res,rej)=>{
+          r.onload = ()=> res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(bwDataURL);
+        });
+        bwDataURLstring = d;
+      } else {
+        // fallback: draw on main canvas later
+      }
+
+      // Build SVG string: embed B/W image data URL (if available) then draw lines
       let svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'>`;
-      svg += `<image href='${dataURL}' x='0' y='0' width='${w}' height='${h}' preserveAspectRatio='xMidYMid slice'/>`;
-      // draw each X as two colored lines (slightly thicker to show thread)
-      svg += `<g stroke-linecap="round" stroke-linejoin="round">`;
-      // iterate grid again to draw two lines for each cell with palette color
+      if(bwDataURLstring) svg += `<image href='${bwDataURLstring}' x='0' y='0' width='${w}' height='${h}' preserveAspectRatio='xMidYMid slice' />`;
+      else svg += `<rect width='100%' height='100%' fill='white'/>`;
+      svg += `<g stroke='black' stroke-width='1' stroke-linecap='round'>`;
+      // draw merged stitches as polyline(s) — for visibility we draw one polyline connecting all points in order
+      if(merged.length){
+        svg += `<polyline fill='none' points='${merged.map(p=>p[0]+','+p[1]).join(' ')}'/>`;
+      }
+      svg += `</g></svg>`;
+
+      // Build PNG preview: draw B/W raster then strokes
+      const pngCanvas = new OffscreenCanvas(w,h);
+      const pngCtx = pngCanvas.getContext('2d');
+      // draw B/W raster from cells
+      pngCtx.fillStyle='white'; pngCtx.fillRect(0,0,w,h);
+      pngCtx.fillStyle='black';
       for(let gy=0; gy<gridH; gy++){
         for(let gx=0; gx<gridW; gx++){
-          const ci = nearestIndex(cellColors[gy][gx], palette);
-          const col = palette[ci];
-          const colorStr = `rgb(${col[0]},${col[1]},${col[2]})`;
-          const x0 = gx*cell + 1, y0 = gy*cell + 1; // inset a bit so stitches look nicer
-          const x1 = x0 + cell - 2, y1 = y0 + cell - 2;
-          svg += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${colorStr}" stroke-width="${Math.max(1, Math.round(cell/6))}" />`;
-          svg += `<line x1="${x1}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="${colorStr}" stroke-width="${Math.max(1, Math.round(cell/6))}" />`;
+          if(cells[gy][gx].black){
+            pngCtx.fillRect(gx*cell, gy*cell, cell, cell);
+          }
         }
       }
-      svg += `</g>`;
-      svg += `</svg>`;
-
-      // Build PNG: draw image then draw colored X lines on canvas
-      const ctx2 = off.getContext('2d');
-      // redraw original image to ensure background present
-      ctx2.clearRect(0,0,w,h);
-      const imgBitmap = await createImageBitmap(await (await fetch(dataURL)).blob());
-      ctx2.drawImage(imgBitmap, 0, 0, w, h);
+      // draw X stitches (black lines with some thickness)
+      pngCtx.strokeStyle='black';
+      pngCtx.lineWidth = Math.max(1, Math.round(cell/6));
+      for(let i=0;i<merged.length;i+=1){
+        // we'll draw small segments along the sequence to visualize the stitch path
+      }
+      // draw diagonals per cell to represent stitches visually (same as SVG)
       for(let gy=0; gy<gridH; gy++){
         for(let gx=0; gx<gridW; gx++){
-          const ci = nearestIndex(cellColors[gy][gx], palette);
-          const col = palette[ci];
-          ctx2.strokeStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
-          ctx2.lineWidth = Math.max(1, Math.round(cell/6));
+          if(!cells[gy][gx].black) continue;
           const x0 = gx*cell + 1, y0 = gy*cell + 1;
           const x1 = x0 + cell - 2, y1 = y0 + cell - 2;
-          ctx2.beginPath();
-          ctx2.moveTo(x0,y0); ctx2.lineTo(x1,y1); ctx2.stroke();
-          ctx2.beginPath();
-          ctx2.moveTo(x1,y0); ctx2.lineTo(x0,y1); ctx2.stroke();
+          pngCtx.beginPath(); pngCtx.moveTo(x0,y0); pngCtx.lineTo(x1,y1); pngCtx.stroke();
+          pngCtx.beginPath(); pngCtx.moveTo(x1,y0); pngCtx.lineTo(x0,y1); pngCtx.stroke();
         }
       }
-      const png = await off.convertToBlob({type:'image/png', quality:0.9});
+      const pngBlob = await pngCanvas.convertToBlob({type:'image/png', quality:0.9});
 
-      postMessage({ svg, dst: dstArr.buffer, dte: dteArr.buffer, dse: dseArr.buffer, png, notes: {cells: gridW*gridH, points: merged.length, palette: palette.length} }, [dstArr.buffer, dteArr.buffer, dseArr.buffer]);
+      // Send back buffers
+      postMessage({ svg, dst: dstArr.buffer, dte: dteArr.buffer, dse: dseArr.buffer, png: pngBlob, notes: {cells: gridW*gridH, stitches: merged.length} }, [dstArr.buffer, dteArr.buffer, dseArr.buffer]);
+
     }catch(err){
       postMessage({ error: (err && err.message) ? err.message : String(err) });
     }
@@ -300,7 +283,7 @@ const dlDte = document.getElementById('downloadDte');
 const dlDse = document.getElementById('downloadDse');
 const dlPng = document.getElementById('downloadPng');
 const cellSizeInput = document.getElementById('cellSize');
-const kcolorsInput = document.getElementById('kcolors');
+const bwThresholdInput = document.getElementById('bwThreshold');
 const stitchStepInput = document.getElementById('stitchStep');
 const exportScaleInput = document.getElementById('exportScale');
 
@@ -309,7 +292,7 @@ let lastSvg, lastDst, lastDte, lastDse, lastPng;
 worker.onmessage = (ev) => {
   if(ev.data && ev.data.type === 'log'){ log('[worker] ' + ev.data.msg); return; }
   if(ev.data.error){ log('خطأ: '+ev.data.error); return; }
-  log('تمت المعالجة — خلايا: ' + (ev.data.notes && ev.data.notes.cells) + ', نقاط: ' + (ev.data.notes && ev.data.notes.points) + ', ألوان: ' + (ev.data.notes && ev.data.notes.palette));
+  log('تمت المعالجة — خلايا: ' + (ev.data.notes && ev.data.notes.cells) + ', نقاط: ' + (ev.data.notes && ev.data.notes.stitches));
   lastSvg = new Blob([ev.data.svg], {type:'image/svg+xml'});
   lastDst = new Blob([ev.data.dst], {type:'application/octet-stream'});
   lastDte = new Blob([ev.data.dte], {type:'application/octet-stream'});
@@ -325,11 +308,11 @@ worker.onmessage = (ev) => {
   dlDse.classList.remove('hidden');
   dlPng.classList.remove('hidden');
 
-  dlSvg.onclick = ()=> forceDownload(lastSvg, 'molfa_cross_stitch.svg');
-  dlDst.onclick = ()=> forceDownload(lastDst, 'molfa_cross_stitch.dst');
-  dlDte.onclick = ()=> forceDownload(lastDte, 'molfa_cross_stitch.dte');
-  dlDse.onclick = ()=> forceDownload(lastDse, 'molfa_cross_stitch.dse');
-  dlPng.onclick = ()=> forceDownload(lastPng, 'molfa_cross_stitch.png');
+  dlSvg.onclick = ()=> forceDownload(lastSvg, 'molfa_bw_stitch.svg');
+  dlDst.onclick = ()=> forceDownload(lastDst, 'molfa_bw_stitch.dst');
+  dlDte.onclick = ()=> forceDownload(lastDte, 'molfa_bw_stitch.dte');
+  dlDse.onclick = ()=> forceDownload(lastDse, 'molfa_bw_stitch.dse');
+  dlPng.onclick = ()=> forceDownload(lastPng, 'molfa_bw_stitch.png');
 };
 
 btn.addEventListener('click', () => {
@@ -340,7 +323,7 @@ btn.addEventListener('click', () => {
     worker.postMessage({
       dataURL: reader.result,
       cellSize: Number(cellSizeInput.value||8),
-      kcolors: Number(kcolorsInput.value||6),
+      bwThreshold: Number(bwThresholdInput.value||128),
       stitchStep: Number(stitchStepInput.value||4),
       exportScale: Number(exportScaleInput.value||0.2)
     });
