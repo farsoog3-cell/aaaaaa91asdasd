@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Molfa — محول الصور إلى تطريز</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* لمسات صغيرة */
+    .glass {
+      background: linear-gradient(135deg, rgba(255,255,255,0.65), rgba(255,255,255,0.35));
+      backdrop-filter: blur(6px);
+    }
+    .btn-glow {
+      box-shadow: 0 6px 18px rgba(99,102,241,0.18);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-6">
+  <main class="w-full max-w-4xl">
+    <div class="glass rounded-3xl shadow-2xl p-8">
+      <header class="flex items-center justify-between gap-4 mb-6">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-violet-500 text-white rounded-xl flex items-center justify-center text-2xl font-bold">M</div>
+          <div>
+            <h1 class="text-2xl font-extrabold">Molfa — محوّل الصور إلى تطريز</h1>
+            <p class="text-sm text-slate-600">ارفع صورة، اختر نوع الملف، وثم انقر "ابدأ التطريز" لتحصل على ملف جاهز للماكينة.</p>
+          </div>
+        </div>
+
+        <div class="text-sm text-slate-500">
+          الإصدار التجريبي • Ubuntu server + Ink/Stitch متوافق
+        </div>
+      </header>
+
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- اليسار: أدوات الرفع والإعداد -->
+        <div class="space-y-4">
+          <label class="block">
+            <span class="text-sm font-medium text-slate-700">الصورة</span>
+            <input id="fileInput" type="file" accept="image/*" class="mt-2 w-full text-sm" />
+          </label>
+
+          <div class="flex items-center gap-2 mt-2">
+            <button id="btnPick" class="btn-glow inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow">
+              📤 رفع صورة
+            </button>
+            <button id="btnReset" class="inline-flex items-center gap-2 bg-white border px-4 py-2 rounded-lg hover:bg-slate-50">إعادة تعيين</button>
+          </div>
+
+          <div class="mt-4">
+            <span class="text-sm font-medium text-slate-700">إعداد/نمط</span>
+            <div class="mt-2 flex gap-2">
+              <button class="preset px-3 py-2 rounded-lg border" data-preset="logo">شعار</button>
+              <button class="preset px-3 py-2 rounded-lg border" data-preset="photo">صورة فوتوغرافية</button>
+              <button class="preset px-3 py-2 rounded-lg border" data-preset="line">خطي</button>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <span class="text-sm font-medium text-slate-700">نوع ملف الماكينة</span>
+            <div class="mt-2 flex gap-2">
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer">
+                <input type="radio" name="format" value="DST" checked /> <span class="text-sm">DST</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer">
+                <input type="radio" name="format" value="PES" /> <span class="text-sm">PES</span>
+              </label>
+              <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer">
+                <input type="radio" name="format" value="DSE" /> <span class="text-sm">DSE</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-6 flex gap-3">
+            <button id="startBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-2xl font-semibold">🧵 ابدأ التطريز</button>
+            <button id="previewBtn" class="w-44 bg-slate-100 border hover:bg-slate-200 rounded-2xl text-slate-700 py-3">🔍 عرض معاينة</button>
+          </div>
+
+          <div id="statusBox" class="mt-4 p-3 rounded-lg bg-white border text-sm text-slate-600 hidden"></div>
+
+          <div class="mt-3 text-xs text-slate-500">
+            ملاحظة: هذه الواجهة تتوقع وجود API في /api/digitize الذي يعالج الصورة ويعود بملف التطريز. إن لم يكن الخادم جاهزًا سيتم استخدام محاكاة محلية.
+          </div>
+        </div>
+
+        <!-- اليمين: معاينات ونتيجة -->
+        <div class="space-y-4">
+          <div class="bg-white border rounded-xl p-4 min-h-[260px] flex flex-col items-center justify-center">
+            <div id="previewContainer" class="w-full flex flex-col items-center gap-3">
+              <div class="text-xs text-slate-500">معاينة الصورة المرفوعة</div>
+              <img id="previewImg" src="" alt="preview" class="max-h-56 rounded-lg shadow hidden" />
+              <div id="noPreview" class="text-slate-400">لم تقم برفع أي صورة بعد</div>
+            </div>
+          </div>
+
+          <div class="bg-white border rounded-xl p-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-slate-700">المخرجات</h3>
+              <div id="fileNameBadge" class="text-xs text-slate-500">لا ملف حتى الآن</div>
+            </div>
+
+            <div id="resultArea" class="mt-3 hidden">
+              <div class="flex items-center gap-3">
+                <img id="stitchedPreview" src="" alt="Stitched preview" class="w-24 h-24 rounded-lg border shadow object-cover" />
+                <div class="flex-1">
+                  <div id="resultMsg" class="text-sm font-medium text-slate-700">التصميم جاهز</div>
+                  <div id="resultSub" class="text-xs text-slate-500 mt-1">يمكنك تنزيل الملف أو إرساله للماكينة</div>
+                </div>
+              </div>
+
+              <div class="mt-4 flex gap-3">
+                <a id="downloadLink" class="flex-1 inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg" download>
+                  ⬇️ تنزيل الملف
+                </a>
+                <button id="sendToMachine" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">⚙️ للمكينة</button>
+              </div>
+            </div>
+
+            <div id="resultEmpty" class="mt-3 text-sm text-slate-500">لا توجد نتائج بعد التحويل</div>
+          </div>
+
+        </div>
+      </section>
+
+      <footer class="mt-6 text-xs text-slate-500 text-center">
+        © Molfa — تجربة تجريبية. تأكد من اختبار الخياطة على قماش تجريبي قبل التشغيل الإنتاجي.
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    // عناصر DOM
+    const fileInput = document.getElementById('fileInput');
+    const btnPick = document.getElementById('btnPick');
+    const btnReset = document.getElementById('btnReset');
+    const previewImg = document.getElementById('previewImg');
+    const noPreview = document.getElementById('noPreview');
+    const previewContainer = document.getElementById('previewContainer');
+    const startBtn = document.getElementById('startBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const statusBox = document.getElementById('statusBox');
+    const resultArea = document.getElementById('resultArea');
+    const resultEmpty = document.getElementById('resultEmpty');
+    const stitchedPreview = document.getElementById('stitchedPreview');
+    const fileNameBadge = document.getElementById('fileNameBadge');
+    const downloadLink = document.getElementById('downloadLink');
+    const sendToMachine = document.getElementById('sendToMachine');
+
+    let currentFile = null;
+    let currentPreset = 'logo';
+
+    // زرفتح نافذة الملفات
+    btnPick.addEventListener('click', () => fileInput.click());
+
+    // اختيار ملف
+    fileInput.addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      currentFile = f;
+      const url = URL.createObjectURL(f);
+      previewImg.src = url;
+      previewImg.classList.remove('hidden');
+      noPreview.classList.add('hidden');
+      fileNameBadge.textContent = f.name;
+      // إخفاء النتائج القديمة
+      resultArea.classList.add('hidden');
+      resultEmpty.classList.remove('hidden');
+      downloadLink.removeAttribute('href');
+      downloadLink.removeAttribute('download');
+      stitchedPreview.src = '';
+    });
+
+    // إعادة تعيين
+    btnReset.addEventListener('click', () => {
+      fileInput.value = '';
+      currentFile = null;
+      previewImg.src = '';
+      previewImg.classList.add('hidden');
+      noPreview.classList.remove('hidden');
+      fileNameBadge.textContent = 'لا ملف حتى الآن';
+      resultArea.classList.add('hidden');
+      resultEmpty.classList.remove('hidden');
+      statusBox.classList.add('hidden');
+    });
+
+    // اختيارات الـ preset
+    document.querySelectorAll('.preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.preset').forEach(x => x.classList.remove('bg-indigo-50', 'border-indigo-600'));
+        btn.classList.add('bg-indigo-50', 'border-indigo-600');
+        currentPreset = btn.dataset.preset;
+      });
+    });
+    // تفعيل الافتراضي
+    document.querySelector('.preset[data-preset="logo"]').classList.add('bg-indigo-50', 'border-indigo-600');
+
+    // معاينة سريعة (فقط يعرض الصورة)
+    previewBtn.addEventListener('click', () => {
+      if (!currentFile) return alert('اختر صورة أولاً');
+      window.open(previewImg.src, '_blank');
+    });
+
+    // مساعدة: احصل على نوع الملف المحدد
+    function getSelectedFormat() {
+      const r = document.querySelector('input[name="format"]:checked');
+      return r ? r.value : 'DST';
+    }
+
+    // ابدأ التطريز: استدعاء API أو محاكاة
+    startBtn.addEventListener('click', async () => {
+      if (!currentFile) return alert('اختر صورة أولاً');
+      const format = getSelectedFormat();
+
+      // عرض حالة
+      statusBox.classList.remove('hidden');
+      statusBox.textContent = 'جاري رفع الصورة وإعدادها...';
+
+      // بناء الفورم داتا
+      const fd = new FormData();
+      fd.append('image', currentFile);
+      fd.append('preset', currentPreset);
+      fd.append('format', format);
+
+      // محاولة إرسال للـ API (مسار افتراضي /api/digitize)
+      const apiUrl = '/api/digitize';
+
+      try {
+        // نستخدم fetch ونظهر شريط بسيط للتقدم (لاستجابة البراوزر)
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          body: fd
+        });
+
+        if (!res.ok) throw new Error('فشل الخادم: ' + res.status);
+
+        // نحاول الحصول على اسم الملف من الهيدر
+        const filename = res.headers.get('x-filename') || (currentFile.name.split('.').slice(0, -1).join('.') + '.' + format.toLowerCase());
+
+        // نحصل على blob
+        const blob = await res.blob();
+
+        // إن الخادم يعيد معاينة صورة (png/jpg) ننفصل عنها — لكن هنا نفترض أنه يعود بالملف النهائي (مثل .dst) وأحياناً نوفّر معاينة في هيدر آخر
+        // نعطي الرابط للتنزيل:
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = filename;
+        downloadLink.textContent = '⬇️ تنزيل ' + filename;
+
+        // إن كان الخادم أيضاً يرسل معاينة مطرزة (مثلاً في header x-preview: image/png as base64 أو ملف ملحق) — هذا يتطلب تنسيق إضافي من الخادم.
+        // هنا سنعرض صورة "مصغّرة" محاكاة: نطلب من الخادم ملف معاينة إذا أعاد نوع image/*
+        if (blob.type.startsWith('image/')) {
+          // الخادم أرسل صورة معاينة
+          stitchedPreview.src = url;
+        } else {
+          // الخادم أرسل ملف تطريز (binary) — لا يمكن عرضه كصورة، نعرض صورة محاكية من الـ preview الأصلي مع تأثير
+          stitchedPreview.src = previewImg.src;
+        }
+
+        // إظهار منطقة النتائج
+        resultArea.classList.remove('hidden');
+        resultEmpty.classList.add('hidden');
+        statusBox.textContent = 'تم تحويل الملف بنجاح!';
+        fileNameBadge.textContent = filename;
+
+      } catch (err) {
+        console.error(err);
+        // محاكاة محلية إذا كان الخادم غير موجود أو فشل
+        statusBox.textContent = 'تعذّر الوصول إلى الخادم، سيتم استخدام المحاكاة المحلية...';
+        await simulateLocalConversion(getSelectedFormat());
+      }
+    });
+
+    // زر إرسال للمكينة (يمكن ربطه بنقطة API أخرى)
+    sendToMachine.addEventListener('click', () => {
+      const dl = downloadLink.href;
+      if (!dl) return alert('لا يوجد ملف لتنزيله بعد');
+      // هنا يمكن إضافة منطق إرسال الملف مباشرة إلى سيرفر الماكينة أو إضافة واجهة طباعة
+      alert('تم تجهيز الملف للماكينة. يمكنك تنزيله الآن أو رفعه لبرنامج الماكينة.');
+      window.location = dl; // تنزيل فوري
+    });
+
+    // --- محاكاة محلية للّوحـــــــة إذا لم يوجد خادم ---
+    async function simulateLocalConversion(format) {
+      statusBox.textContent = 'جارٍ تحويل الصورة محلياً (محاكاة)...';
+      // تأخير بسيط لمحاكاة الزمن الحقيقي
+      await new Promise(r => setTimeout(r, 1500));
+      const fakeContent = 'PROTOTYPE-EMBROIDERY-DATA';
+      const blob = new Blob([fakeContent], { type: 'application/octet-stream' });
+      const filename = (currentFile ? currentFile.name.split('.').slice(0, -1).join('.') : 'design') + '.' + format.toLowerCase();
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+      downloadLink.download = filename;
+      downloadLink.textContent = '⬇️ تنزيل ' + filename;
+
+      stitchedPreview.src = previewImg.src;
+      resultArea.classList.remove('hidden');
+      resultEmpty.classList.add('hidden');
+      fileNameBadge.textContent = filename;
+      statusBox.textContent = 'تم التحويل (محاكاة). قم بتنزيل الملف وجربه على ماكينة الاختبار.';
+    }
+
+  </script>
+</body>
+</html>
