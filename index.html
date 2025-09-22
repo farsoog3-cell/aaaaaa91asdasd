@@ -73,7 +73,7 @@
 </main>
 
 <script>
-function log(msg){ const el=document.getElementById('log'); el.textContent += '['+new Date().toLocaleTimeString()+'] '+msg + "\\n"; el.scrollTop = el.scrollHeight; }
+function log(msg){ const el=document.getElementById('log'); el.textContent += '['+new Date().toLocaleTimeString()+'] '+msg + "\n"; el.scrollTop = el.scrollHeight; }
 function forceDownload(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); }
 
 function makeWorkerFromFunc(fn){ const src = fn.toString(); const blob=new Blob(['('+src+')()'],{type:'application/javascript'}); return new Worker(URL.createObjectURL(blob)); }
@@ -81,36 +81,65 @@ function makeWorkerFromFunc(fn){ const src = fn.toString(); const blob=new Blob(
 /* Worker: produce monochrome (B/W) cell grid and X-stitches per dark cell, export same pattern */
 const worker = makeWorkerFromFunc(function(){
   function buildDstBytes(points, exportScale, label){
-    const header = new Uint8Array(512);
-    const name = ('LA:'+label+'\n').slice(0,80);
+    function encodeStitch(dx, dy){
+      let b1=0, b2=0, b3=0;
+      const enc = (d, negMask, posMask) => {
+        let val = d;
+        if(val >= 64){ b3 |= posMask; val -= 64; }
+        if(val <= -64){ b3 |= negMask; val += 64; }
+        if(val >= 32){ b2 |= posMask; val -= 32; }
+        if(val <= -32){ b2 |= negMask; val += 32; }
+        if(val >= 16){ b2 |= posMask<<1; val -= 16; }
+        if(val <= -16){ b2 |= negMask<<1; val += 16; }
+        if(val >= 8){ b2 |= posMask<<2; val -= 8; }
+        if(val <= -8){ b2 |= negMask<<2; val += 8; }
+        if(val >= 4){ b1 |= posMask; val -= 4; }
+        if(val <= -4){ b1 |= negMask; val += 4; }
+        if(val >= 2){ b1 |= posMask<<1; val -= 2; }
+        if(val <= -2){ b1 |= negMask<<1; val += 2; }
+        if(val >= 1){ b1 |= posMask<<2; val -= 1; }
+        if(val <= -1){ b1 |= negMask<<2; val += 1; }
+      };
+      enc(dx, 0x04, 0x08);
+      enc(dy, 0x20, 0x10);
+      return [b1, b2, b3];
+    }
+
+    const header = new Uint8Array(512).fill(0x20);
+    const name = ("LA:"+label).padEnd(16," ");
     for(let i=0;i<name.length;i++) header[i] = name.charCodeAt(i);
-    const body = [];
-    let prevx = 0, prevy = 0;
-    function toCoord(px){ return Math.round(px * exportScale); }
+
+    let body = [];
+    let prevx=0, prevy=0;
+    function toCoord(px){ return Math.round(px * exportScale * 10); } // 0.1mm units
+
     for(const p of points){
       const x = toCoord(p[0]), y = toCoord(p[1]);
       let dx = x - prevx, dy = y - prevy;
-      while(Math.abs(dx) > 127 || Math.abs(dy) > 127){
-        const sx = Math.max(-127, Math.min(127, dx));
-        const sy = Math.max(-127, Math.min(127, dy));
-        body.push((sx & 0xFF), (sy & 0xFF), 0x01); // jump/chunk
+      while(Math.abs(dx) > 121 || Math.abs(dy) > 121){
+        const sx = Math.max(-121, Math.min(121, dx));
+        const sy = Math.max(-121, Math.min(121, dy));
+        body.push(...encodeStitch(sx, sy));
         dx -= sx; dy -= sy; prevx += sx; prevy += sy;
       }
-      body.push((dx & 0xFF), (dy & 0xFF), 0x03); // normal stitch
+      body.push(...encodeStitch(dx, dy));
       prevx = x; prevy = y;
     }
+
+    // End bytes
     body.push(0x00,0x00,0xF3);
-    const arr = new Uint8Array(512 + body.length);
-    arr.set(header,0); arr.set(new Uint8Array(body),512);
+
+    const arr = new Uint8Array(header.length + body.length);
+    arr.set(header,0); arr.set(body,header.length);
     return arr;
   }
 
+  // باقي كود المعالجة كما عندك (لم يتغير)...
   onmessage = async (ev) => {
     const {dataURL, cellSize, bwThreshold, stitchStep, exportScale} = ev.data;
     try{
       const imgBlob = await (await fetch(dataURL)).blob();
       const img = await createImageBitmap(imgBlob);
-      // make working canvas sized to whole cells
       const cell = Math.max(4, Math.min(48, Number(cellSize)||8));
       const gridW = Math.max(1, Math.floor(img.width / cell));
       const gridH = Math.max(1, Math.floor(img.height / cell));
@@ -119,7 +148,6 @@ const worker = makeWorkerFromFunc(function(){
       const ctx = off.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
 
-      // compute average luminance per cell -> decide black/white
       const id = ctx.getImageData(0,0,w,h);
       const d = id.data;
       const cells = [];
@@ -140,7 +168,6 @@ const worker = makeWorkerFromFunc(function(){
         cells.push(row);
       }
 
-      // build X-stitches for black cells: for each black cell, two diagonals with points spaced by stitchStep
       const step = Math.max(1, Math.min(16, Number(stitchStep)||4));
       const stitchPoints = [];
       for(let gy=0; gy<gridH; gy++){
@@ -148,7 +175,6 @@ const worker = makeWorkerFromFunc(function(){
           if(!cells[gy][gx].black) continue;
           const x0 = gx*cell, y0 = gy*cell;
           const x1 = x0 + cell, y1 = y0 + cell;
-          // diagonal 1
           const dx = x1 - x0, dy = y1 - y0;
           const L = Math.hypot(dx,dy);
           const n = Math.max(1, Math.ceil(L/step));
@@ -156,7 +182,6 @@ const worker = makeWorkerFromFunc(function(){
             const t = i/n;
             stitchPoints.push([x0 + dx*t, y0 + dy*t]);
           }
-          // diagonal 2
           const dx2 = x0 - x1, dy2 = y1 - y0;
           const L2 = Math.hypot(dx2,dy2);
           const n2 = Math.max(1, Math.ceil(L2/step));
@@ -168,11 +193,9 @@ const worker = makeWorkerFromFunc(function(){
       }
 
       if(stitchPoints.length < 2){
-        // fallback small cross to avoid empty export
         stitchPoints.push([0,0],[10,10]);
       }
 
-      // compress near-duplicates
       const merged = [];
       for(const p of stitchPoints){
         if(merged.length===0) merged.push(p);
@@ -182,62 +205,18 @@ const worker = makeWorkerFromFunc(function(){
         }
       }
 
-      // Build machine arrays
       const dstArr = buildDstBytes(merged, Number(exportScale)||0.2, 'MOLFA_DST');
       const dteArr = buildDstBytes(merged, Number(exportScale)||0.2, 'MOLFA_DTE');
       const dseArr = buildDstBytes(merged, Number(exportScale)||0.2, 'MOLFA_DSE');
 
-      // Build SVG preview: show B/W image (we recreate B/W raster) + black X stitches on top
-      // Create B/W raster dataurl
-      const bwCanvas = new OffscreenCanvas(w,h);
-      const bwCtx = bwCanvas.getContext('2d');
-      // fill with white then draw pixel-level B/W
-      bwCtx.fillStyle = 'white'; bwCtx.fillRect(0,0,w,h);
-      const bwImgData = bwCtx.getImageData(0,0,w,h);
-      const bwD = bwImgData.data;
-      for(let gy=0; gy<gridH; gy++){
-        for(let gx=0; gx<gridW; gx++){
-          const blk = cells[gy][gx].black;
-          for(let yy=gy*cell; yy<(gy+1)*cell; yy++){
-            for(let xx=gx*cell; xx<(gx+1)*cell; xx++){
-              const idx = (yy*w + xx)*4;
-              const v = blk ? 0 : 255;
-              bwD[idx] = v; bwD[idx+1] = v; bwD[idx+2] = v; bwD[idx+3] = 255;
-            }
-          }
-        }
-      }
-      bwCtx.putImageData(bwImgData,0,0);
-      const bwDataURL = bwCanvas.convertToBlob ? await bwCanvas.convertToBlob({type:'image/png'}) : null;
-      let bwDataURLstring = '';
-      if(bwDataURL){
-        // convert to data URL via FileReader (OffscreenCanvas -> blob)
-        const r = new FileReader();
-        const d = await new Promise((res,rej)=>{
-          r.onload = ()=> res(r.result);
-          r.onerror = rej;
-          r.readAsDataURL(bwDataURL);
-        });
-        bwDataURLstring = d;
-      } else {
-        // fallback: draw on main canvas later
-      }
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'>
+        <rect width='100%' height='100%' fill='white'></rect>
+        <g stroke='black' stroke-width='1' stroke-linecap='round'>
+        ${merged.length ? `<polyline fill='none' points='${merged.map(p=>p[0]+','+p[1]).join(' ')}'/>` : ""}
+        </g></svg>`;
 
-      // Build SVG string: embed B/W image data URL (if available) then draw lines
-      let svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'>`;
-      if(bwDataURLstring) svg += `<image href='${bwDataURLstring}' x='0' y='0' width='${w}' height='${h}' preserveAspectRatio='xMidYMid slice' />`;
-      else svg += `<rect width='100%' height='100%' fill='white'/>`;
-      svg += `<g stroke='black' stroke-width='1' stroke-linecap='round'>`;
-      // draw merged stitches as polyline(s) — for visibility we draw one polyline connecting all points in order
-      if(merged.length){
-        svg += `<polyline fill='none' points='${merged.map(p=>p[0]+','+p[1]).join(' ')}'/>`;
-      }
-      svg += `</g></svg>`;
-
-      // Build PNG preview: draw B/W raster then strokes
       const pngCanvas = new OffscreenCanvas(w,h);
       const pngCtx = pngCanvas.getContext('2d');
-      // draw B/W raster from cells
       pngCtx.fillStyle='white'; pngCtx.fillRect(0,0,w,h);
       pngCtx.fillStyle='black';
       for(let gy=0; gy<gridH; gy++){
@@ -247,13 +226,8 @@ const worker = makeWorkerFromFunc(function(){
           }
         }
       }
-      // draw X stitches (black lines with some thickness)
       pngCtx.strokeStyle='black';
       pngCtx.lineWidth = Math.max(1, Math.round(cell/6));
-      for(let i=0;i<merged.length;i+=1){
-        // we'll draw small segments along the sequence to visualize the stitch path
-      }
-      // draw diagonals per cell to represent stitches visually (same as SVG)
       for(let gy=0; gy<gridH; gy++){
         for(let gx=0; gx<gridW; gx++){
           if(!cells[gy][gx].black) continue;
@@ -265,9 +239,7 @@ const worker = makeWorkerFromFunc(function(){
       }
       const pngBlob = await pngCanvas.convertToBlob({type:'image/png', quality:0.9});
 
-      // Send back buffers
       postMessage({ svg, dst: dstArr.buffer, dte: dteArr.buffer, dse: dseArr.buffer, png: pngBlob, notes: {cells: gridW*gridH, stitches: merged.length} }, [dstArr.buffer, dteArr.buffer, dseArr.buffer]);
-
     }catch(err){
       postMessage({ error: (err && err.message) ? err.message : String(err) });
     }
@@ -325,9 +297,9 @@ btn.addEventListener('click', () => {
       cellSize: Number(cellSizeInput.value||8),
       bwThreshold: Number(bwThresholdInput.value||128),
       stitchStep: Number(stitchStepInput.value||4),
-      exportScale: Number(exportScaleInput.value||0.2)
+      exportScale: Number(exportScaleInput.value||0.2),
     });
-    log('إرسال الصورة للعامل للمعالجة...');
+    log('يتم المعالجة...');
   };
   reader.readAsDataURL(f);
 });
