@@ -14,7 +14,7 @@
 </head>
 <body class="min-h-screen flex flex-col">
 <header class="bg-indigo-700 text-white py-4 shadow text-center">
-  <h1 class="text-xl md:text-2xl font-semibold">Molfa Embroidery — تحويل أي صورة إلى غرز</h1>
+  <h1 class="text-xl md:text-2xl font-semibold">Molfa Embroidery — تحويل صورة إلى مخطط غرز</h1>
 </header>
 
 <main class="container mx-auto p-4 md:p-6 flex-grow">
@@ -30,6 +30,7 @@
           <button id="downloadSvg" class="flex-1 bg-blue-600 text-white py-2 rounded hidden">⬇️ SVG</button>
           <button id="downloadDst" class="flex-1 bg-green-600 text-white py-2 rounded hidden">⬇️ DST</button>
           <button id="downloadDte" class="flex-1 bg-pink-600 text-white py-2 rounded hidden">⬇️ DTE</button>
+          <button id="downloadDse" class="flex-1 bg-orange-600 text-white py-2 rounded hidden">⬇️ DSE</button>
           <button id="downloadPng" class="flex-1 bg-gray-700 text-white py-2 rounded hidden">⬇️ PNG</button>
         </div>
       </div>
@@ -50,6 +51,31 @@ function forceDownload(blob, name){ const url = URL.createObjectURL(blob); const
 function makeWorkerFromFunc(fn){ const src = fn.toString(); const blob=new Blob(['('+src+')()'],{type:'application/javascript'}); return new Worker(URL.createObjectURL(blob)); }
 
 const worker = makeWorkerFromFunc(function(){
+  function sobelEdge(imageData,w,h){
+    const gray=new Uint8ClampedArray(w*h);
+    for(let i=0;i<w*h;i++){
+      const j=i*4; gray[i]=(imageData[j]+imageData[j+1]+imageData[j+2])/3;
+    }
+    const out=[];
+    const gx=[-1,0,1,-2,0,2,-1,0,1];
+    const gy=[-1,-2,-1,0,0,0,1,2,1];
+    for(let y=1;y<h-1;y++){
+      for(let x=1;x<w-1;x++){
+        let sx=0,sy=0;
+        for(let ky=-1;ky<=1;ky++){
+          for(let kx=-1;kx<=1;kx++){
+            const val=gray[(y+ky)*w+(x+kx)];
+            sx+=val*gx[(ky+1)*3+(kx+1)];
+            sy+=val*gy[(ky+1)*3+(kx+1)];
+          }
+        }
+        const mag=Math.sqrt(sx*sx+sy*sy);
+        if(mag>200){ out.push([x,y]); }
+      }
+    }
+    return out;
+  }
+
   onmessage = async (ev)=>{
     const {dataURL} = ev.data;
     try{
@@ -60,24 +86,13 @@ const worker = makeWorkerFromFunc(function(){
       ctx.drawImage(img,0,0,w,h);
       const id=ctx.getImageData(0,0,w,h);
 
-      // تحويل مبسط للصورة إلى أبيض/أسود + نقاط غرز على الحواف
-      const stitches=[];
-      for(let y=0;y<h;y+=4){
-        for(let x=0;x<w;x+=4){
-          const i=(y*w+x)*4;
-          const gray=(id.data[i]+id.data[i+1]+id.data[i+2])/3;
-          if(gray<128){ // جزء غامق => غرزة
-            stitches.push([x,y,false]);
-          }
-        }
-      }
-      if(stitches.length<2) stitches.push([0,0,false],[20,20,false]);
+      const stitches = sobelEdge(id.data,w,h);
+      if(stitches.length<2) stitches.push([0,0],[20,20]);
 
-      // build DST/DTE arrays
-      function toCoord(px){ return Math.round(px*0.2); } // px -> 0.1mm
-      function buildDst(points,label){
+      function toCoord(px){ return Math.round(px*0.2); }
+      function buildFile(points,label){
         const header=new Uint8Array(512);
-        const name=('LA:'+label+'\n').slice(0,80);
+        const name=('LA:'+label+'\\n').slice(0,80);
         for(let i=0;i<name.length;i++) header[i]=name.charCodeAt(i);
         const body=[]; let prevx=0,prevy=0;
         for(const [xx,yy] of points){
@@ -93,20 +108,20 @@ const worker = makeWorkerFromFunc(function(){
         body.push(0x00,0x00,0xF3);
         const arr=new Uint8Array(512+body.length); arr.set(header,0); arr.set(new Uint8Array(body),512); return arr;
       }
-      const dstArr=buildDst(stitches,'MOLFA_DST');
-      const dteArr=buildDst(stitches,'MOLFA_DTE');
 
-      // SVG: الصورة + الغرز + start/end
+      const dstArr=buildFile(stitches,'MOLFA_DST');
+      const dteArr=buildFile(stitches,'MOLFA_DTE');
+      const dseArr=buildFile(stitches,'MOLFA_DSE');
+
       let svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>`;
-      const url = dataURL;
-      svg+=`<image href='${url}' x='0' y='0' width='${w}' height='${h}'/>`;
-      svg+=`<polyline points='${stitches.map(p=>p[0]+','+p[1]).join(' ')}' fill='none' stroke='red' stroke-width='1'/>`;
+      svg+=`<image href='${dataURL}' x='0' y='0' width='${w}' height='${h}'/>`;
+      svg+=`<polyline points='${stitches.map(p=>p[0]+','+p[1]).join(' ')}' fill='none' stroke='black' stroke-width='1'/>`;
       svg+=`<circle cx='${stitches[0][0]}' cy='${stitches[0][1]}' r='3' fill='green'/>`;
       svg+=`<circle cx='${stitches[stitches.length-1][0]}' cy='${stitches[stitches.length-1][1]}' r='3' fill='blue'/>`;
       svg+=`</svg>`;
 
       const pngBlob=await off.convertToBlob({type:'image/png'});
-      postMessage({svg,dst:dstArr.buffer,dte:dteArr.buffer,png:pngBlob},[dstArr.buffer,dteArr.buffer]);
+      postMessage({svg,dst:dstArr.buffer,dte:dteArr.buffer,dse:dseArr.buffer,png:pngBlob},[dstArr.buffer,dteArr.buffer,dseArr.buffer]);
     }catch(e){ postMessage({error:e.message}); }
   }
 });
@@ -117,24 +132,35 @@ const svgPreview=document.getElementById('svgPreview');
 const dlSvg=document.getElementById('downloadSvg');
 const dlDst=document.getElementById('downloadDst');
 const dlDte=document.getElementById('downloadDte');
+const dlDse=document.getElementById('downloadDse');
 const dlPng=document.getElementById('downloadPng');
 
-let lastSvg,lastDst,lastDte,lastPng;
+let lastSvg,lastDst,lastDte,lastDse,lastPng;
 
 worker.onmessage=(ev)=>{
   if(ev.data.error){ log('خطأ: '+ev.data.error); return; }
   lastSvg=new Blob([ev.data.svg],{type:'image/svg+xml'});
   lastDst=new Blob([ev.data.dst],{type:'application/octet-stream'});
   lastDte=new Blob([ev.data.dte],{type:'application/octet-stream'});
+  lastDse=new Blob([ev.data.dse],{type:'application/octet-stream'});
   lastPng=ev.data.png;
+
   const url=URL.createObjectURL(lastSvg);
   svgPreview.innerHTML=`<object type="image/svg+xml" data="${url}" style="width:100%;height:100%"></object>`;
-  dlSvg.classList.remove('hidden'); dlDst.classList.remove('hidden'); dlDte.classList.remove('hidden'); dlPng.classList.remove('hidden');
+
+  dlSvg.classList.remove('hidden');
+  dlDst.classList.remove('hidden');
+  dlDte.classList.remove('hidden');
+  dlDse.classList.remove('hidden');
+  dlPng.classList.remove('hidden');
+
   dlSvg.onclick=()=>forceDownload(lastSvg,'pattern.svg');
   dlDst.onclick=()=>forceDownload(lastDst,'pattern.dst');
   dlDte.onclick=()=>forceDownload(lastDte,'pattern.dte');
+  dlDse.onclick=()=>forceDownload(lastDse,'pattern.dse');
   dlPng.onclick=()=>forceDownload(lastPng,'preview.png');
-  log('✔ تم إنشاء المخطط مع الصورة والخلفية');
+
+  log('✔ تم إنشاء المسار الأسود مع التصدير (SVG, PNG, DST, DTE, DSE)');
 }
 
 btn.onclick=async()=>{
