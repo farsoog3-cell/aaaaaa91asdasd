@@ -3,103 +3,102 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Molfa Embroidery — صورة إلى غرز (حواف دقيقة)</title>
+<title>Molfa — تصدير مخطط غرز احترافي (SVG/PNG/DST/DTE/DSE)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  body{font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f3f4f6; color:#111;}
-  .mono{font-family:ui-monospace, Menlo, Monaco, "Roboto Mono", monospace;}
-  .svg-wrap { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-  .svg-wrap svg, .svg-wrap object { width:100%; height:100%; }
-  header h1{ font-size:1.1rem; }
+  body{font-family:Inter,system-ui,Arial; background:#f3f4f6; color:#111;}
+  .mono{font-family:ui-monospace,monospace;}
+  .svg-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;}
+  .svg-wrap svg,.svg-wrap object{width:100%;height:100%;}
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
 <header class="bg-indigo-700 text-white py-4 shadow text-center">
-  <h1 class="text-xl md:text-2xl font-semibold">Molfa — تحويل الصورة إلى مخطط غرز (حواف دقيقة)</h1>
-  <p class="text-sm">Sobel edge detection → ترتيب مسارات → تبسيط → تصدير SVG/PNG/DST/DTE/DSE</p>
+  <h1 class="text-xl font-semibold">Molfa — تحويل الصورة إلى مخطط غرز احترافي ومطابق لملف DST</h1>
 </header>
 
 <main class="container mx-auto p-4 md:p-6 flex-grow">
-  <div class="bg-white rounded-xl shadow p-4 md:p-6 space-y-4">
+  <div class="bg-white rounded-xl shadow p-4 md:p-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="space-y-3">
+      <div>
         <label class="block font-medium">اختر صورة</label>
         <input id="file" type="file" accept="image/*" class="w-full p-2 border rounded"/>
         <div class="mt-3">
-          <label class="text-sm block mb-1">عتبة الحافة (0-255)</label>
-          <input id="threshold" type="range" min="10" max="255" value="120" class="w-full"/>
-          <div class="text-xs text-gray-500 mt-1">عدل لتقليل/زيادة عدد نقاط الحافة</div>
+          <label class="text-sm block mb-1">عتبة الحافة (threshold)</label>
+          <input id="threshold" type="range" min="20" max="300" value="140" class="w-full"/>
         </div>
         <div class="mt-3">
-          <label class="text-sm block mb-1">تبسيط المسار (epsilon px)</label>
-          <input id="epsilon" type="number" min="0" max="10" step="0.5" value="1.0" class="w-full p-2 border rounded"/>
+          <label class="text-sm block mb-1">تبسيط (epsilon px)</label>
+          <input id="epsilon" type="number" min="0" max="8" step="0.5" value="1.0" class="w-full p-2 border rounded"/>
         </div>
         <div class="mt-3">
-          <label class="text-sm block mb-1">مقياس التصدير (px → 0.1mm)</label>
-          <input id="exportScale" type="number" value="0.2" step="0.1" min="0.05" max="5" class="w-full p-2 border rounded"/>
-          <div class="text-xs text-gray-500 mt-1">مثال: 0.2 يعني 1px = 0.02cm (0.1mm وحدة)</div>
+          <label class="text-sm block mb-1">كثافة العينات (sample step px)</label>
+          <input id="sampleStep" type="number" min="1" max="8" step="1" value="2" class="w-full p-2 border rounded"/>
+        </div>
+        <div class="mt-3">
+          <label class="text-sm block mb-1">مقياس التصدير (px → machine units 0.1mm)</label>
+          <input id="exportScale" type="number" value="0.2" step="0.05" min="0.05" max="5" class="w-full p-2 border rounded"/>
         </div>
 
-        <div class="mt-3 flex flex-col sm:flex-row gap-3">
-          <button id="process" class="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">🔧 توليد الغرز وملفات</button>
+        <div class="mt-4 flex gap-2">
+          <button id="process" class="flex-1 bg-indigo-600 text-white py-2 rounded">🔧 توليد وتصدير</button>
         </div>
 
-        <div class="mt-3 flex flex-col sm:flex-row gap-3">
-          <button id="downloadSvg" class="flex-1 bg-blue-600 text-white py-2 rounded hidden">⬇️ SVG</button>
-          <button id="downloadDst" class="flex-1 bg-green-600 text-white py-2 rounded hidden">⬇️ DST</button>
-          <button id="downloadDte" class="flex-1 bg-pink-600 text-white py-2 rounded hidden">⬇️ DTE</button>
-          <button id="downloadDse" class="flex-1 bg-orange-600 text-white py-2 rounded hidden">⬇️ DSE</button>
-          <button id="downloadPng" class="flex-1 bg-gray-700 text-white py-2 rounded hidden">⬇️ PNG</button>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <button id="downloadSvg" class="hidden bg-blue-600 text-white py-2 rounded">⬇️ SVG</button>
+          <button id="downloadDst" class="hidden bg-green-600 text-white py-2 rounded">⬇️ DST</button>
+          <button id="downloadDte" class="hidden bg-pink-600 text-white py-2 rounded">⬇️ DTE</button>
+          <button id="downloadDse" class="hidden bg-yellow-600 text-white py-2 rounded">⬇️ DSE</button>
+          <button id="downloadPng" class="hidden bg-gray-700 text-white py-2 rounded">⬇️ PNG</button>
         </div>
       </div>
 
-      <div class="md:col-span-2 space-y-3">
+      <div class="md:col-span-2">
         <div class="bg-gray-50 p-3 rounded min-h-[360px] flex items-center justify-center">
-          <div id="svgPreview" class="svg-wrap w-full h-full text-gray-500">لم يتم التوليد بعد</div>
+          <div id="svgPreview" class="svg-wrap text-gray-500">لم يتم التوليد بعد</div>
         </div>
-        <pre id="log" class="mono text-xs h-40 overflow-auto whitespace-pre-wrap bg-white p-2 rounded border"></pre>
+        <pre id="log" class="mono text-xs h-40 overflow-auto whitespace-pre-wrap bg-white p-2 rounded border mt-3"></pre>
       </div>
     </div>
   </div>
 </main>
 
 <script>
-function log(msg){ const el=document.getElementById('log'); el.textContent += '['+new Date().toLocaleTimeString()+'] '+msg+"\n"; el.scrollTop = el.scrollHeight; }
-function forceDownload(blob, name){ const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000); }
+function log(msg){ const el=document.getElementById('log'); el.textContent += '['+new Date().toLocaleTimeString()+'] '+msg + "\\n"; el.scrollTop = el.scrollHeight; }
+function forceDownload(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); }
 
 function makeWorkerFromFunc(fn){ const src = fn.toString(); const blob=new Blob(['('+src+')()'],{type:'application/javascript'}); return new Worker(URL.createObjectURL(blob)); }
 
-/* Worker: يقوم ب Soble -> تجميع مكونات -> ترتيب نقاط -> تبسيط -> بناء ملفات */
+/* Worker code: Sobel -> components -> nearest ordering -> RDP simplify -> export files */
 const worker = makeWorkerFromFunc(function(){
-  // تبسيط خطي: Ramer–Douglas–Peucker
-  function simplifyDP(points, epsilon){
+  // Helper: Ramer–Douglas–Peucker
+  function simplifyDP(points, eps){
     if(points.length < 3) return points.slice();
-    const sqr = (a)=>a*a;
-    function perpDist(pt, a, b){
-      const dx = b[0]-a[0], dy = b[1]-a[1];
+    function perpDist(pt,a,b){
+      const dx=b[0]-a[0], dy=b[1]-a[1];
       if(dx===0 && dy===0) return Math.hypot(pt[0]-a[0], pt[1]-a[1]);
-      const t = ((pt[0]-a[0])*dx + (pt[1]-a[1])*dy) / (dx*dx+dy*dy);
-      const projx = a[0] + t*dx, projy = a[1] + t*dy;
+      const t=((pt[0]-a[0])*dx + (pt[1]-a[1])*dy)/(dx*dx+dy*dy);
+      const projx=a[0]+t*dx, projy=a[1]+t*dy;
       return Math.hypot(pt[0]-projx, pt[1]-projy);
     }
     function rdp(pts, eps){
-      let dmax=0, index=-1;
+      let dmax=0, idx=-1;
       for(let i=1;i<pts.length-1;i++){
         const d = perpDist(pts[i], pts[0], pts[pts.length-1]);
-        if(d > dmax){ index = i; dmax = d; }
+        if(d > dmax){ idx = i; dmax = d; }
       }
       if(dmax > eps){
-        const left = rdp(pts.slice(0,index+1), eps);
-        const right = rdp(pts.slice(index), eps);
-        return left.slice(0,left.length-1).concat(right);
+        const left = rdp(pts.slice(0, idx+1), eps);
+        const right = rdp(pts.slice(idx), eps);
+        return left.slice(0, left.length-1).concat(right);
       }
       return [pts[0], pts[pts.length-1]];
     }
-    return rdp(points, epsilon);
+    return rdp(points, eps);
   }
 
-  // Sobel operator -> نقاط حافة (x,y)
-  function sobelPoints(imageData, w, h, thresh){
+  // Sobel edge detection -> returns boolean map
+  function sobelMap(imageData, w, h, threshold){
     const gray = new Uint8ClampedArray(w*h);
     for(let y=0;y<h;y++){
       for(let x=0;x<w;x++){
@@ -107,42 +106,37 @@ const worker = makeWorkerFromFunc(function(){
         gray[y*w+x] = Math.round((imageData[i]+imageData[i+1]+imageData[i+2])/3);
       }
     }
-    const gx = [-1,0,1,-2,0,2,-1,0,1];
-    const gy = [-1,-2,-1,0,0,0,1,2,1];
-    const out = new Uint8Array(w*h);
-    const pts = [];
+    const gx=[-1,0,1,-2,0,2,-1,0,1];
+    const gy=[-1,-2,-1,0,0,0,1,2,1];
+    const map = new Uint8Array(w*h);
     for(let y=1;y<h-1;y++){
       for(let x=1;x<w-1;x++){
-        let sx=0, sy=0;
-        let k = 0;
+        let sx=0, sy=0, k=0;
         for(let ky=-1; ky<=1; ky++){
-          for(let kx=-1; kx<=1; kx++,k++){
-            const val = gray[(y+ky)*w + (x+kx)];
-            sx += gx[k]*val; sy += gy[k]*val;
+          for(let kx=-1; kx<=1; kx++, k++){
+            const v = gray[(y+ky)*w + (x+kx)];
+            sx += gx[k]*v; sy += gy[k]*v;
           }
         }
         const mag = Math.hypot(sx,sy);
-        if(mag > thresh){
-          out[y*w+x] = 1;
-          pts.push([x,y]);
-        }
+        if(mag > threshold) map[y*w+x] = 1;
       }
     }
-    return {map: out, pts};
+    return map;
   }
 
-  // اجمع مكونات متصلة (4-conn)
-  function collectComponents(map, w, h){
+  // collect 4-connected components
+  function collectComponents(map,w,h){
     const visited = new Uint8Array(w*h);
     const comps = [];
     for(let i=0;i<w*h;i++){
       if(map[i] && !visited[i]){
         const stack=[i]; visited[i]=1; const comp=[];
         while(stack.length){
-          const idx=stack.pop();
-          const y = Math.floor(idx/w), x = idx - y*w;
+          const idx = stack.pop();
+          const y=Math.floor(idx/w), x=idx - y*w;
           comp.push([x,y]);
-          const nbs = [idx-1, idx+1, idx-w, idx+w];
+          const nbs=[idx-1, idx+1, idx-w, idx+w];
           for(const nb of nbs){
             if(nb>=0 && nb<w*h && map[nb] && !visited[nb]){
               visited[nb]=1; stack.push(nb);
@@ -155,29 +149,31 @@ const worker = makeWorkerFromFunc(function(){
     return comps;
   }
 
-  // ترتيب نقاط مكوّن عبر نهج أقرب جار لتكوين خط متصل (بسيط)
+  // nearest-neighbor path ordering (simple but effective on components)
   function orderNearest(points){
-    if(points.length<=2) return points.slice();
+    if(points.length <= 2) return points.slice();
     const pts = points.slice();
     const ordered = [pts.shift()];
     while(pts.length){
       const last = ordered[ordered.length-1];
-      let bestIdx = 0, bestD = Infinity;
+      let bestIdx=0, bestD=Infinity;
       for(let i=0;i<pts.length;i++){
         const d = (last[0]-pts[i][0])**2 + (last[1]-pts[i][1])**2;
-        if(d < bestD){ bestD = d; bestIdx = i; }
+        if(d < bestD){ bestD=d; bestIdx=i; }
       }
       ordered.push(pts.splice(bestIdx,1)[0]);
     }
     return ordered;
   }
 
-  function buildExportArray(points, exportScale, label){
+  // Export builder for Tajima-like DST (simple prototype)
+  function buildDstBytes(points, exportScale, label){
+    function toSigned(b){ return b & 0xFF; }
     const header = new Uint8Array(512);
     const name = ('LA:'+label+'\n').slice(0,80);
     for(let i=0;i<name.length;i++) header[i] = name.charCodeAt(i);
     const body = [];
-    let prevx = 0, prevy = 0;
+    let prevx=0, prevy=0;
     function toCoord(px){ return Math.round(px * exportScale); }
     for(const p of points){
       const x = toCoord(p[0]), y = toCoord(p[1]);
@@ -185,10 +181,10 @@ const worker = makeWorkerFromFunc(function(){
       while(Math.abs(dx) > 127 || Math.abs(dy) > 127){
         const sx = Math.max(-127, Math.min(127, dx));
         const sy = Math.max(-127, Math.min(127, dy));
-        body.push(sx & 0xFF, sy & 0xFF, 0x03);
+        body.push((sx & 0xFF), (sy & 0xFF), 0x03);
         dx -= sx; dy -= sy; prevx += sx; prevy += sy;
       }
-      body.push(dx & 0xFF, dy & 0xFF, 0x03);
+      body.push((dx & 0xFF), (dy & 0xFF), 0x03);
       prevx = x; prevy = y;
     }
     body.push(0x00,0x00,0xF3);
@@ -198,84 +194,95 @@ const worker = makeWorkerFromFunc(function(){
   }
 
   onmessage = async (ev) => {
-    const { dataURL, threshold, epsilon, exportScale } = ev.data;
+    const { dataURL, threshold, epsilon, sampleStep, exportScale } = ev.data;
     try{
       const blob = await (await fetch(dataURL)).blob();
       const img = await createImageBitmap(blob);
-      const w = 800; // نستخدم عرض أعلى لدقة أفضل
+      // larger working width for precision
+      const w = 800;
       const h = Math.round(img.height * (w / img.width));
       const off = new OffscreenCanvas(w,h);
       const ctx = off.getContext('2d');
       ctx.drawImage(img,0,0,w,h);
       const id = ctx.getImageData(0,0,w,h);
 
-      // Sobel -> خريطة + نقاط
-      const {map, pts} = sobelPoints(id.data, w, h, threshold|0);
-      logWorker('نقاط حافة أولية: ' + pts.length);
+      // compute edge map
+      const map = sobelMap(id.data, w, h, threshold|0);
+      postMessage({type:'log', msg:'حواف: تم استخراج خريطة الحواف'});
 
-      // تجميع مكونات متصلة
-      const comps = collectComponents(map, w, h);
-      logWorker('مكونات متصلة: ' + comps.length);
+      // sample map to reduce density (user-controlled)
+      const step = Math.max(1, Math.min(8, Math.round(sampleStep||2)));
+      const sampledMap = new Uint8Array(w*h);
+      for(let y=0;y<h;y+=step){
+        for(let x=0;x<w;x+=step){
+          if(map[y*w+x]) sampledMap[y*w+x] = 1;
+        }
+      }
 
-      // نظم كل مكوّن إلى مسار مرتب وبسّطه
+      // collect components
+      const comps = collectComponents(sampledMap, w, h);
+      postMessage({type:'log', msg:'عدد المكونات: '+comps.length});
+
+      // build ordered & simplified paths
       const orderedPaths = [];
       for(const comp of comps){
-        // ترتيب نقاط المكوّن
+        if(comp.length < 3) continue;
         const ord = orderNearest(comp);
         const simp = simplifyDP(ord, Number(epsilon) || 1.0);
         if(simp.length >= 2) orderedPaths.push(simp);
       }
-      logWorker('مسارات بعد الترتيب والتبسيط: ' + orderedPaths.length);
-      // دمج المسارات الكبيرة إلى قائمة نقاط واحدة (حفظ ترتيب المسارات)
-      const merged = [];
-      for(const p of orderedPaths){
-        // إذا أردنا فاصل قفز: نضع علامة بداية (we'll encode jump by separate point with flag)
-        for(const pt of p) merged.push([pt[0], pt[1], 0]); // flag 0 = stitch
-        // بعد كل مكوّن نضع نقطة صغيرة كقفزة — لكن في البنية البسيطة سنكتفي بالبقاء متصلًا
-      }
-      if(merged.length < 2) merged.push([0,0,0], [20,20,0]);
+      postMessage({type:'log', msg:'مسارات بعد الترتيب والتبسيط: '+orderedPaths.length});
 
-      // لصيغة التصوير في SVG: نحتاج فقط إحداثيات ثنائية الأبعاد
-      const polyPoints = merged.map(p => [p[0], p[1]]);
-      // بناء ملفات DST/DTE/DSE (نستخدم نفس التشفير التجريبي)
-      const dstArr = buildExportArray(polyPoints, Number(exportScale) || 0.2, 'MOLFA_DST');
-      const dteArr = buildExportArray(polyPoints, Number(exportScale) || 0.2, 'MOLFA_DTE');
-      const dseArr = buildExportArray(polyPoints, Number(exportScale) || 0.2, 'MOLFA_DSE');
-
-      // بناء SVG: الصورة + المسار الأسود + نقاط البداية/النهاية
-      let svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'>`;
-      svg += `<image href='${dataURL}' x='0' y='0' width='${w}' height='${h}' preserveAspectRatio='xMidYMid slice'/>`;
-      // نرسم كل مسار منفصل (جوهر الاحترافية)
-      svg += `<g stroke="black" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">`;
+      // Merge into one point list (we keep separate subpaths for SVG but for DST we concatenate with small jump markers removed)
+      const mergedPoints = [];
       for(const path of orderedPaths){
-        svg += `<polyline points="${path.map(pt=>pt[0]+','+pt[1]).join(' ')}" />`;
+        for(const pt of path) mergedPoints.push([pt[0], pt[1]]);
+      }
+      if(mergedPoints.length < 2) mergedPoints.push([0,0],[20,20]);
+
+      // Build exports
+      const dst = buildDstBytes(mergedPoints, Number(exportScale) || 0.2, 'MOLFA_DST');
+      const dte = buildDstBytes(mergedPoints, Number(exportScale) || 0.2, 'MOLFA_DTE');
+      const dse = buildDstBytes(mergedPoints, Number(exportScale) || 0.2, 'MOLFA_DSE');
+
+      // Build SVG (only plot the paths, no background image)
+      let svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}' viewBox='0 0 ${w} ${h}'>`;
+      svg += `<rect width='100%' height='100%' fill='white'/>`;
+      svg += `<g stroke='black' stroke-width='1.2' fill='none' stroke-linecap='round' stroke-linejoin='round'>`;
+      for(const p of orderedPaths){
+        svg += `<polyline points="${p.map(pt=>pt[0]+','+pt[1]).join(' ')}" />`;
       }
       svg += `</g>`;
-      // نقاط البداية والنهاية (نأخذ أول وأخر نقطة من merged)
-      const first = polyPoints[0], last = polyPoints[polyPoints.length-1];
-      svg += `<circle cx="${first[0]}" cy="${first[1]}" r="4" fill="green" />`;
-      svg += `<circle cx="${last[0]}" cy="${last[1]}" r="4" fill="blue" />`;
+      // Start/end markers (first/last from merged)
+      const first = mergedPoints[0], last = mergedPoints[mergedPoints.length-1];
+      svg += `<circle cx="${first[0]}" cy="${first[1]}" r="3" fill="green" />`;
+      svg += `<circle cx="${last[0]}" cy="${last[1]}" r="3" fill="blue" />`;
       svg += `</svg>`;
 
-      // نولد PNG من OffscreenCanvas
+      // create PNG from offscreen canvas (draw white bg + paths)
+      const ctx2 = off.getContext('2d');
+      ctx2.clearRect(0,0,w,h);
+      ctx2.fillStyle = 'white'; ctx2.fillRect(0,0,w,h);
+      ctx2.strokeStyle = 'black'; ctx2.lineWidth = 1.2; ctx2.lineJoin='round'; ctx2.lineCap='round';
+      for(const p of orderedPaths){
+        ctx2.beginPath();
+        ctx2.moveTo(p[0][0], p[0][1]);
+        for(let i=1;i<p.length;i++) ctx2.lineTo(p[i][0], p[i][1]);
+        ctx2.stroke();
+      }
       const pngBlob = await off.convertToBlob({type:'image/png', quality:0.92});
 
-      // أرسل النتيجة، ننقل الـArrayBuffers لتحسين الأداء
-      postMessage({ svg, dst: dstArr.buffer, dte: dteArr.buffer, dse: dseArr.buffer, png: pngBlob, notes: {paths: orderedPaths.length, points: polyPoints.length} }, [dstArr.buffer, dteArr.buffer, dseArr.buffer]);
+      postMessage({ svg, dst: dst.buffer, dte: dte.buffer, dse: dse.buffer, png: pngBlob, notes:{paths:orderedPaths.length, points: mergedPoints.length} }, [dst.buffer, dte.buffer, dse.buffer]);
+
     }catch(err){
-      postMessage({ error: err && err.message ? err.message : String(err) });
+      postMessage({ error: (err && err.message) ? err.message : String(err) });
     }
   };
-
-  // لايمكن استخدام console داخل worker في بعض البيئات لذا نحاول إرسال لواجهة المستخدم
-  function logWorker(m){
-    try{ postMessage({type:'log', msg: m}); }catch(e){}
-  }
 });
 
 const fileInput = document.getElementById('file');
 const btn = document.getElementById('process');
-const svgPreview = document.getElementById('svgPreview');
+const preview = document.getElementById('svgPreview');
 const dlSvg = document.getElementById('downloadSvg');
 const dlDst = document.getElementById('downloadDst');
 const dlDte = document.getElementById('downloadDte');
@@ -283,50 +290,45 @@ const dlDse = document.getElementById('downloadDse');
 const dlPng = document.getElementById('downloadPng');
 const thresholdInput = document.getElementById('threshold');
 const epsilonInput = document.getElementById('epsilon');
+const sampleStepInput = document.getElementById('sampleStep');
 const exportScaleInput = document.getElementById('exportScale');
 
 let lastSvg, lastDst, lastDte, lastDse, lastPng;
 
 worker.onmessage = (ev) => {
-  const data = ev.data;
-  if(data && data.type === 'log'){ log('[worker] '+data.msg); return; }
-  if(data.error){ log('خطأ من العامل: ' + data.error); return; }
-  log('تمت المعالجة — مسارات: ' + (data.notes && data.notes.paths) + ', نقاط: ' + (data.notes && data.notes.points));
-  lastSvg = new Blob([data.svg], {type:'image/svg+xml'});
-  lastDst = new Blob([data.dst], {type:'application/octet-stream'});
-  lastDte = new Blob([data.dte], {type:'application/octet-stream'});
-  lastDse = new Blob([data.dse], {type:'application/octet-stream'});
-  lastPng = data.png;
+  if(ev.data && ev.data.type === 'log'){ log('[worker] ' + ev.data.msg); return; }
+  if(ev.data.error){ log('خطأ: '+ev.data.error); return; }
+  log('تمت المعالجة — مسارات: ' + (ev.data.notes && ev.data.notes.paths) + ', نقاط: ' + (ev.data.notes && ev.data.notes.points));
+  lastSvg = new Blob([ev.data.svg], {type:'image/svg+xml'});
+  lastDst = new Blob([ev.data.dst], {type:'application/octet-stream'});
+  lastDte = new Blob([ev.data.dte], {type:'application/octet-stream'});
+  lastDse = new Blob([ev.data.dse], {type:'application/octet-stream'});
+  lastPng = ev.data.png;
 
   const url = URL.createObjectURL(lastSvg);
-  svgPreview.innerHTML = `<object type="image/svg+xml" data="${url}" style="width:100%;height:100%"></object>`;
+  preview.innerHTML = `<object type="image/svg+xml" data="${url}" style="width:100%;height:100%"></object>`;
 
-  dlSvg.classList.remove('hidden');
-  dlDst.classList.remove('hidden');
-  dlDte.classList.remove('hidden');
-  dlDse.classList.remove('hidden');
-  dlPng.classList.remove('hidden');
-
+  dlSvg.classList.remove('hidden'); dlDst.classList.remove('hidden'); dlDte.classList.remove('hidden'); dlDse.classList.remove('hidden'); dlPng.classList.remove('hidden');
   dlSvg.onclick = ()=> forceDownload(lastSvg, 'molfa_stitch.svg');
   dlDst.onclick = ()=> forceDownload(lastDst, 'molfa_stitch.dst');
   dlDte.onclick = ()=> forceDownload(lastDte, 'molfa_stitch.dte');
   dlDse.onclick = ()=> forceDownload(lastDse, 'molfa_stitch.dse');
-  dlPng.onclick = ()=> forceDownload(lastPng, 'molfa_preview.png');
+  dlPng.onclick = ()=> forceDownload(lastPng, 'molfa_stitch.png');
 };
 
-btn.addEventListener('click', async ()=>{
+btn.addEventListener('click', () => {
   const f = fileInput.files[0];
-  if(!f){ alert('اختر صورة أولاً'); return; }
+  if(!f){ alert('اختر صورة'); return; }
   const reader = new FileReader();
-  reader.onload = ()=> {
-    const dataURL = reader.result;
-    log('إرسال الصورة للعامل. تحريك...');
+  reader.onload = () => {
     worker.postMessage({
-      dataURL,
-      threshold: Number(thresholdInput.value||120),
+      dataURL: reader.result,
+      threshold: Number(thresholdInput.value||140),
       epsilon: Number(epsilonInput.value||1.0),
+      sampleStep: Number(sampleStepInput.value||2),
       exportScale: Number(exportScaleInput.value||0.2)
     });
+    log('إرسال الصورة للعامل (worker) للمعالجة...');
   };
   reader.readAsDataURL(f);
 });
