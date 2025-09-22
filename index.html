@@ -3,22 +3,18 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Molfa Embroidery — Stitches Output (معدّل)</title>
+<title>Molfa Embroidery — صورة إلى غرز</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  :root { --bg:#f3f4f6; --card:#ffffff; }
-  body{font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:var(--bg); color:#111;}
-  .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;}
-  .svg-preview img{ max-width:100%; height:auto; display:block; margin:0 auto; object-fit:contain; }
+  body{font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#f3f4f6; color:#111;}
+  .mono{font-family:ui-monospace, Menlo, Monaco, "Roboto Mono", monospace;}
   .svg-wrap { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
   .svg-wrap svg, .svg-wrap object { width:100%; height:100%; }
-  @media (max-width:640px){ header h1{ font-size:1.05rem; } .grid-cols-3 { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body class="min-h-screen flex flex-col">
 <header class="bg-indigo-700 text-white py-4 shadow text-center">
-  <h1 class="text-xl md:text-2xl font-semibold">Molfa Embroidery — تحويل صورة → غرز</h1>
-  <p class="text-sm">نسخة معدّلة: تصدير DST/SVG حقيقي، PNG دائمًا، منع الملفات الفارغة</p>
+  <h1 class="text-xl md:text-2xl font-semibold">Molfa Embroidery — تحويل أي صورة إلى غرز</h1>
 </header>
 
 <main class="container mx-auto p-4 md:p-6 flex-grow">
@@ -27,14 +23,6 @@
       <div class="space-y-3">
         <label class="block font-medium">اختر صورة</label>
         <input id="file" type="file" accept="image/*" class="w-full p-2 border rounded"/>
-        <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
-          <div><label>عدد الألوان</label><input id="colors" type="number" value="4" min="1" max="12" class="w-full p-2 border rounded"/></div>
-          <div><label>عرض المعاينة (px)</label><input id="previewW" type="number" value="700" min="200" max="1600" class="w-full p-2 border rounded"/></div>
-          <div><label>طول الغرزة (px)</label><input id="stitchLen" type="number" value="4" min="1" max="40" class="w-full p-2 border rounded"/></div>
-          <div><label>تباعد الغرز (px)</label><input id="stitchGap" type="number" value="4" min="1" max="40" class="w-full p-2 border rounded"/></div>
-          <div><label>زاوية الغرز (°)</label><input id="angle" type="number" value="45" min="0" max="180" class="w-full p-2 border rounded"/></div>
-        </div>
-        <div class="mt-3"><label class="block text-sm mb-1">مقياس التصدير (px → 0.1mm)</label><input id="exportScale" type="number" value="1.0" step="0.1" min="0.1" max="10" class="w-full p-2 border rounded"/></div>
         <div class="mt-3 flex flex-col sm:flex-row gap-3">
           <button id="process" class="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700">🔧 توليد الغرز وملفات</button>
         </div>
@@ -46,7 +34,7 @@
         </div>
       </div>
       <div class="md:col-span-2 space-y-3">
-        <div class="bg-gray-50 p-3 rounded min-h-[260px] sm:min-h-[380px] flex items-center justify-center">
+        <div class="bg-gray-50 p-3 rounded min-h-[300px] flex items-center justify-center">
           <div id="svgPreview" class="svg-wrap w-full h-full text-gray-500">لم يتم التوليد بعد</div>
         </div>
         <pre id="log" class="mono text-xs h-40 overflow-auto whitespace-pre-wrap bg-white p-2 rounded border"></pre>
@@ -59,32 +47,41 @@
 function log(msg){ document.getElementById('log').textContent += msg + "\n"; }
 function forceDownload(blob, name){ const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000); }
 
-// === Worker Function Inline ===
 function makeWorkerFromFunc(fn){ const src = fn.toString(); const blob=new Blob(['('+src+')()'],{type:'application/javascript'}); return new Worker(URL.createObjectURL(blob)); }
 
 const worker = makeWorkerFromFunc(function(){
   onmessage = async (ev)=>{
-    const {dataURL,settings} = ev.data;
+    const {dataURL} = ev.data;
     try{
       const img = await createImageBitmap(await (await fetch(dataURL)).blob());
-      const w = settings.previewW|0, h = Math.round(img.height*(w/img.width));
+      const w = 500, h = Math.round(img.height*(500/img.width));
       const off = new OffscreenCanvas(w,h);
       const ctx=off.getContext('2d');
       ctx.drawImage(img,0,0,w,h);
       const id=ctx.getImageData(0,0,w,h);
-      // بدلاً من خوارزمية معقدة: غرزة بسيطة موزعة
+
+      // تحويل مبسط للصورة إلى أبيض/أسود + نقاط غرز على الحواف
       const stitches=[];
-      for(let y=0;y<h;y+=settings.stitchGap|0){ for(let x=0;x<w;x+=settings.stitchGap|0){ stitches.push([x,y,false]); } }
-      if(stitches.length<2) stitches.push([0,0,false],[10,10,false]);
-      // تحويل لوحدات DST (0.1mm)
-      function toCoord(px){ return Math.round(px*settings.exportScale); }
+      for(let y=0;y<h;y+=4){
+        for(let x=0;x<w;x+=4){
+          const i=(y*w+x)*4;
+          const gray=(id.data[i]+id.data[i+1]+id.data[i+2])/3;
+          if(gray<128){ // جزء غامق => غرزة
+            stitches.push([x,y,false]);
+          }
+        }
+      }
+      if(stitches.length<2) stitches.push([0,0,false],[20,20,false]);
+
+      // build DST/DTE arrays
+      function toCoord(px){ return Math.round(px*0.2); } // px -> 0.1mm
       function buildDst(points,label){
         const header=new Uint8Array(512);
         const name=('LA:'+label+'\n').slice(0,80);
         for(let i=0;i<name.length;i++) header[i]=name.charCodeAt(i);
         const body=[]; let prevx=0,prevy=0;
-        for(const p of points){
-          const x=toCoord(p[0]), y=toCoord(p[1]);
+        for(const [xx,yy] of points){
+          const x=toCoord(xx), y=toCoord(yy);
           let dx=x-prevx, dy=y-prevy;
           while(Math.abs(dx)>127||Math.abs(dy)>127){
             const sx=Math.max(-127,Math.min(127,dx));
@@ -98,11 +95,16 @@ const worker = makeWorkerFromFunc(function(){
       }
       const dstArr=buildDst(stitches,'MOLFA_DST');
       const dteArr=buildDst(stitches,'MOLFA_DTE');
-      // SVG
+
+      // SVG: الصورة + الغرز + start/end
       let svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>`;
-      svg+=`<rect width='100%' height='100%' fill='white'/>`;
-      for(const p of stitches){ svg+=`<circle cx='${p[0]}' cy='${p[1]}' r='1' fill='red'/>`; }
+      const url = dataURL;
+      svg+=`<image href='${url}' x='0' y='0' width='${w}' height='${h}'/>`;
+      svg+=`<polyline points='${stitches.map(p=>p[0]+','+p[1]).join(' ')}' fill='none' stroke='red' stroke-width='1'/>`;
+      svg+=`<circle cx='${stitches[0][0]}' cy='${stitches[0][1]}' r='3' fill='green'/>`;
+      svg+=`<circle cx='${stitches[stitches.length-1][0]}' cy='${stitches[stitches.length-1][1]}' r='3' fill='blue'/>`;
       svg+=`</svg>`;
+
       const pngBlob=await off.convertToBlob({type:'image/png'});
       postMessage({svg,dst:dstArr.buffer,dte:dteArr.buffer,png:pngBlob},[dstArr.buffer,dteArr.buffer]);
     }catch(e){ postMessage({error:e.message}); }
@@ -132,14 +134,14 @@ worker.onmessage=(ev)=>{
   dlDst.onclick=()=>forceDownload(lastDst,'pattern.dst');
   dlDte.onclick=()=>forceDownload(lastDte,'pattern.dte');
   dlPng.onclick=()=>forceDownload(lastPng,'preview.png');
-  log('تم التصدير: SVG + DST + DTE + PNG');
+  log('✔ تم إنشاء المخطط مع الصورة والخلفية');
 }
 
 btn.onclick=async()=>{
   const f=fileInput.files[0];
   if(!f){ alert('اختر صورة'); return; }
   const fr=new FileReader();
-  fr.onload=()=>{ worker.postMessage({dataURL:fr.result,settings:{previewW:+document.getElementById('previewW').value,stitchGap:+document.getElementById('stitchGap').value,exportScale:+document.getElementById('exportScale').value}}); };
+  fr.onload=()=>{ worker.postMessage({dataURL:fr.result}); };
   fr.readAsDataURL(f);
 }
 </script>
