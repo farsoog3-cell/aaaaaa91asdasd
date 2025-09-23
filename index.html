@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Molfa Pro — DST (Worker, Run-stitch fill)</title>
+<title>Molfa — إصلاح Worker & DST</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root{--bg:#0b0b0b;--card:#fff;--muted:#9ca3af}
-  body{background:var(--bg);color:var(--card);font-family:Inter,system-ui,Arial;margin:0;height:100vh;display:flex;flex-direction:column}
+  body{background:var(--bg);color:var(--card);font-family:Inter,system-ui,Arial;margin:0;min-height:100vh;display:flex;flex-direction:column}
   header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.04)}
   .logo{width:44px;height:44px;border-radius:8px;background:#fff;color:#000;display:flex;align-items:center;justify-content:center;font-weight:800}
   main{flex:1;display:grid;grid-template-columns:1fr 2fr;gap:16px;padding:16px;box-sizing:border-box}
@@ -15,6 +15,8 @@
   .mono{font-family:ui-monospace,monospace}
   .btn{padding:10px 12px;border-radius:10px;font-weight:700;cursor:pointer}
   @media (max-width:900px){ main{grid-template-columns:1fr; } }
+  .small{font-size:0.85rem;color:#6b7280}
+  #log{background:#000;color:#6ee7b7;padding:10px;border-radius:8px;min-height:120px;max-height:220px;overflow:auto}
 </style>
 </head>
 <body>
@@ -22,35 +24,33 @@
   <div style="display:flex;gap:12px;align-items:center">
     <div class="logo">M</div>
     <div>
-      <div style="font-weight:800;font-size:18px">Molfa Pro</div>
-      <div style="color:var(--muted);font-size:13px">تحويل صورة → تطريز حقيقي (run-stitch fill) — Worker</div>
+      <div style="font-weight:800;font-size:18px">Molfa — Fixed Worker</div>
+      <div class="small">معالجة في Web Worker + إصلاحات النقل (transfer)</div>
     </div>
   </div>
-  <div style="color:var(--muted);font-size:13px">Start ● = أحمر — End ● = أزرق</div>
+  <div class="small">إذا ظهر خطأ انسخه من السجل وأرسله لي.</div>
 </header>
 
 <main>
-  <!-- controls -->
-  <aside class="panel">
+  <aside class="panel" style="min-width:260px">
     <h3 style="font-weight:800;margin-bottom:8px">الإعدادات</h3>
 
-    <label class="text-sm text-gray-600">اختر صورة</label>
+    <label class="small">اختر صورة</label>
     <input id="file" type="file" accept="image/*" class="w-full mt-1 mb-3" />
 
-    <label class="text-sm text-gray-600">حجم الخلية (px)</label>
+    <label class="small">حجم الخلية (px)</label>
     <input id="cellSize" type="number" value="8" min="2" max="64" class="w-full p-2 border rounded mb-2" />
 
-    <label class="text-sm text-gray-600">طول الغرزة داخل الضلع (px) — stitch step</label>
+    <label class="small">طول الغرزة داخل الضلع (px)</label>
     <input id="stitchStep" type="number" value="4" min="1" max="64" class="w-full p-2 border rounded mb-2" />
 
-    <label class="text-sm text-gray-600">عتبة التحويل إلى B/W (0-255)</label>
+    <label class="small">عتبة B/W (0-255)</label>
     <input id="threshold" type="range" min="0" max="255" value="128" class="w-full mb-2" />
-    <div class="text-xs text-gray-500 mb-2">قيمة أعلى → خلايا أكثر تصبح بيضاء (أقل غرز).</div>
 
-    <label class="text-sm text-gray-600">مقياس التصدير (وحدة: 0.1mm لكل px)</label>
+    <label class="small">مقياس التصدير (0.1mm لكل px)</label>
     <input id="exportScale" type="number" value="0.2" step="0.05" min="0.01" class="w-full p-2 border rounded mb-3" />
 
-    <label class="text-sm text-gray-600">عدد الألوان (Color Changes)</label>
+    <label class="small">عدد الألوان</label>
     <input id="numColors" type="number" value="1" min="1" max="8" class="w-full p-2 border rounded mb-3" />
 
     <div style="display:flex;gap:8px">
@@ -59,23 +59,20 @@
     </div>
 
     <div id="downloads" style="display:none;margin-top:12px;flex-direction:column;gap:8px">
-      <button id="downloadDst" class="btn" style="background:#10b981;color:#fff;width:100%">⬇️ تحميل DST (ثنائي)</button>
-      <button id="downloadSvg" class="btn" style="background:#3b82f6;color:#fff;width:100%">⬇️ تحميل SVG</button>
-      <button id="downloadPng" class="btn" style="background:#6b7280;color:#fff;width:100%">⬇️ تحميل PNG</button>
+      <button id="downloadDst" class="btn" style="background:#10b981;color:#fff;width:100%">⬇️ تنزيل DST</button>
+      <button id="downloadSvg" class="btn" style="background:#3b82f6;color:#fff;width:100%">⬇️ تنزيل SVG</button>
+      <button id="downloadPng" class="btn" style="background:#6b7280;color:#fff;width:100%">⬇️ تنزيل PNG</button>
     </div>
 
-    <details style="margin-top:12px;color:var(--muted)"><summary>ملاحظة تقنية</summary>
-      <div style="margin-top:8px;font-size:13px;color:#6b7280">
-        يستخدم هذا الإصدار خطوط تعبئة أفقية (run-stitch) ونسق مسار serpentine لتقليل القفزات. إن أردت Satin/fill احترافي، أستطيع إضافة خوارزميات vectorization لاحقاً.
-      </div>
-    </details>
+    <div class="small" style="margin-top:10px;color:#6b7280">
+      ملاحظة: هذا الإصلاح يتعامل مع مشكلة نقل البيانات بين الـWorker والواجهة. إذا ظهرت أي رسالة خطأ، انسخها لي.
+    </div>
   </aside>
 
-  <!-- preview -->
   <section class="panel" style="display:flex;flex-direction:column;gap:12px">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:800">المعاينة — كيف سيخيط الملف على القماش</div>
-      <div style="color:var(--muted);font-size:13px">خلايا: <span id="cellCount">0</span> • نقاط: <span id="pointCount">0</span> • غرز: <span id="stitchCount">0</span></div>
+      <div style="font-weight:800">المعاينة</div>
+      <div class="small">Start ● = أحمر — End ● = أزرق</div>
     </div>
 
     <div style="display:flex;gap:12px;align-items:stretch">
@@ -83,45 +80,39 @@
         <div style="background:#fff;padding:8px;border-radius:8px;flex:1;display:flex;align-items:center;justify-content:center">
           <canvas id="origCanvas" style="background:#fff;max-width:100%;"></canvas>
         </div>
-        <div style="text-align:center;color:var(--muted);font-size:13px">الصورة بعد التقسيم (B/W)</div>
+        <div class="small" style="text-align:center;color:#6b7280">الصورة بعد التقسيم</div>
       </div>
 
       <div style="flex:1;display:flex;flex-direction:column;gap:8px">
         <div style="background:#fff;padding:8px;border-radius:8px;flex:1;display:flex;align-items:center;justify-content:center">
           <canvas id="stitchCanvas" style="background:#fff;max-width:100%;"></canvas>
         </div>
-        <div style="text-align:center;color:var(--muted);font-size:13px">معاينة المسار (Start=أحمر, End=أزرق)</div>
+        <div class="small" style="text-align:center;color:#6b7280">معاينة الغرز (مسار متصل)</div>
       </div>
     </div>
 
     <div style="display:flex;gap:12px">
       <div style="flex:1">
         <div style="font-weight:700;margin-bottom:6px">دليل الألوان</div>
-        <div id="legendItems" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>
+        <div id="legendItems" style="display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
       <div style="width:220px">
         <div style="font-weight:700;margin-bottom:6px">معلومات</div>
-        <div class="mono" style="font-size:13px;color:#374151">
-          نقطة البداية: <span id="startPt">—</span><br/>
-          نقطة النهاية: <span id="endPt">—</span><br/>
-          أبعاد تقريبية: <span id="sizeInfo">—</span>
-        </div>
+        <div class="mono small" id="infoBox">خلايا: 0 • نقاط: 0 • غرز: 0</div>
       </div>
     </div>
 
-    <div class="mono" id="log" style="background:#000;color:#6ee7b7;padding:10px;border-radius:8px;min-height:100px;max-height:180px;overflow:auto">
-      [جاهز] ارفع صورة واضغط "توليد & معاينة".
-    </div>
+    <div id="log" class="mono">جاهز — اضغط "توليد & معاينة".</div>
   </section>
 </main>
 
 <script>
-/* ======= Utilities ======= */
-const logBox = document.getElementById('log');
-function log(msg){ logBox.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`; logBox.scrollTop = logBox.scrollHeight; }
-function clearLog(){ logBox.textContent = '[جاهز] ارفع صورة واضغط "توليد & معاينة".'; }
+/* ===================== Logging ===================== */
+const logEl = document.getElementById('log');
+function log(msg){ logEl.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`; logEl.scrollTop = logEl.scrollHeight; }
+function clearLog(){ logEl.textContent = 'جاهز — اضغط "توليد & معاينة".'; }
 
-/* ======= DOM refs ======= */
+/* ===================== DOM refs ===================== */
 const fileEl = document.getElementById('file');
 const cellSizeEl = document.getElementById('cellSize');
 const stitchStepEl = document.getElementById('stitchStep');
@@ -134,73 +125,74 @@ const downloadsDiv = document.getElementById('downloads');
 const downloadDstBtn = document.getElementById('downloadDst');
 const downloadSvgBtn = document.getElementById('downloadSvg');
 const downloadPngBtn = document.getElementById('downloadPng');
-
 const origCanvas = document.getElementById('origCanvas');
 const stitchCanvas = document.getElementById('stitchCanvas');
-const startPtEl = document.getElementById('startPt');
-const endPtEl = document.getElementById('endPt');
-const cellCountEl = document.getElementById('cellCount');
-const pointCountEl = document.getElementById('pointCount');
-const stitchCountEl = document.getElementById('stitchCount');
 const legendItems = document.getElementById('legendItems');
-const sizeInfoEl = document.getElementById('sizeInfo');
+const infoBox = document.getElementById('infoBox');
 
-let last = null;
+let lastResult = null;
 
-/* ======= Create Worker ======= */
-function makeWorker(fn){
-  const blob = new Blob(['('+fn.toString()+')()'], {type:'application/javascript'});
+/* ===================== Worker creator ===================== */
+function createWorker(fn){
+  const blob = new Blob(['(' + fn.toString() + ')()'], {type:'application/javascript'});
   return new Worker(URL.createObjectURL(blob));
 }
 
-const worker = makeWorker(function(){
-  // Worker scope
+/* ===================== Worker code ===================== */
+const worker = createWorker(function(){
   self.onmessage = async (ev) => {
     try{
       const { dataURL, cellSize, stitchStep, threshold, exportScale, numColors } = ev.data;
 
-      // load image as bitmap
-      const b = await (await fetch(dataURL)).blob();
-      const img = await createImageBitmap(b);
+      // load image
+      const blob = await (await fetch(dataURL)).blob();
+      const img = await createImageBitmap(blob);
 
-      // resize to whole-cells
-      const gridW = Math.max(1, Math.floor(img.width / cellSize));
-      const gridH = Math.max(1, Math.floor(img.height / cellSize));
-      const w = gridW * cellSize, h = gridH * cellSize;
+      // cap total pixels to avoid excessive work (scale down if needed)
+      const MAX_DIM = 2000; // max dimension (any larger will be scaled down)
+      let scaleDown = 1;
+      if(img.width > MAX_DIM || img.height > MAX_DIM){
+        scaleDown = Math.min(1, Math.max(MAX_DIM / img.width, MAX_DIM / img.height));
+      }
 
-      // use OffscreenCanvas for worker
+      const targetWWhole = Math.floor((img.width * scaleDown) / cellSize) * cellSize || cellSize;
+      const targetHWhole = Math.floor((img.height * scaleDown) / cellSize) * cellSize || cellSize;
+      const w = targetWWhole, h = targetHWhole;
+
+      // draw to offscreen canvas
       const off = new OffscreenCanvas(w, h);
       const ctx = off.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      const id = ctx.getImageData(0,0,w,h).data;
 
-      // compute black cells
+      // compute cells
+      const data = ctx.getImageData(0,0,w,h).data;
+      const gridW = Math.max(1, Math.floor(w / cellSize));
+      const gridH = Math.max(1, Math.floor(h / cellSize));
       const cells = [];
       for(let gy=0; gy<gridH; gy++){
         const row = [];
         for(let gx=0; gx<gridW; gx++){
-          let sr=0,sg=0,sb=0,cnt=0;
+          let sr=0, sg=0, sb=0, cnt=0;
           for(let yy=gy*cellSize; yy<(gy+1)*cellSize; yy++){
             for(let xx=gx*cellSize; xx<(gx+1)*cellSize; xx++){
-              const i = (yy*w + xx)*4;
-              sr += id[i]; sg += id[i+1]; sb += id[i+2]; cnt++;
+              const idx = (yy*w + xx)*4;
+              sr += data[idx]; sg += data[idx+1]; sb += data[idx+2]; cnt++;
             }
           }
-          const lum = Math.round(0.299*(sr/cnt) + 0.587*(sg/cnt) + 0.114*(sb/cnt));
-          const black = lum < threshold ? 1 : 0;
-          row.push(black);
+          const lum = Math.round(0.299*(sr/cnt)+0.587*(sg/cnt)+0.114*(sb/cnt));
+          row.push(lum < threshold ? 1 : 0);
         }
         cells.push(row);
       }
 
-      // Build run-stitch path row-by-row (serpentine)
+      // Build serpentine run-stitch points row-by-row
       const points = [];
       for(let gy=0; gy<gridH; gy++){
-        // build per-row list of black segments across x
-        const segments = [];
+        // collect segments of contiguous black cells in this row
+        let segments = [];
         let segStart = -1;
         for(let gx=0; gx<gridW; gx++){
-          if(cells[gy][gx]){
+          if(cells[gy][gx] === 1){
             if(segStart === -1) segStart = gx;
           } else {
             if(segStart !== -1){ segments.push([segStart, gx-1]); segStart = -1; }
@@ -208,55 +200,52 @@ const worker = makeWorker(function(){
         }
         if(segStart !== -1) segments.push([segStart, gridW-1]);
 
-        // for each segment, create points along its centerline
         if(segments.length === 0) continue;
 
-        // serpentine direction
+        // serpentine: reverse every odd row
         const dir = (gy % 2 === 0) ? 1 : -1;
-        const segs = (dir===1) ? segments : segments.reverse();
+        if(dir === -1) segments = segments.reverse();
 
-        for(const s of segs){
-          const x0 = s[0]*cellSize, x1 = (s[1]+1)*cellSize;
-          const y = gy*cellSize + Math.floor(cellSize/2);
-          // create equidistant points along x0..x1 with stitchStep interval
+        for(const seg of segments){
+          const x0 = seg[0] * cellSize;
+          const x1 = (seg[1] + 1) * cellSize;
           const L = x1 - x0;
           const n = Math.max(1, Math.ceil(L / stitchStep));
-          if(dir===1){
+          if(dir === 1){
             for(let i=0;i<=n;i++){
-              const t = i/n;
-              points.push([x0 + L*t, y]);
+              const t = i / n;
+              points.push([x0 + L * t, gy*cellSize + Math.floor(cellSize/2)]);
             }
           } else {
             for(let i=0;i<=n;i++){
-              const t = i/n;
-              points.push([x1 - L*t, y]);
+              const t = i / n;
+              points.push([x1 - L * t, gy*cellSize + Math.floor(cellSize/2)]);
             }
           }
         }
       }
 
-      // compress near duplicates
+      // compress near-duplicates
       const compressed = [];
       for(const p of points){
         if(compressed.length===0) compressed.push(p);
         else {
           const last = compressed[compressed.length-1];
-          const dx = last[0]-p[0], dy = last[1]-p[1];
-          if(Math.hypot(dx,dy) >= 0.5) compressed.push(p);
+          if(Math.hypot(last[0]-p[0], last[1]-p[1]) >= 0.5) compressed.push(p);
         }
       }
 
-      // Build DST (bit-packed encoder)
-      function buildDstArray(pointsArr, exportScale, numColors, label){
+      // build DST Uint8Array
+      function buildDstArray(ptsArr, exportScale, numColors, label){
         const header = new Uint8Array(512).fill(0x20);
         function put(offset, s){ for(let i=0;i<s.length && offset+i<512;i++) header[offset+i] = s.charCodeAt(i); }
         function toCoord(px){ return Math.round(px * exportScale); } // px -> units (0.1mm)
-        const xs = pointsArr.map(p=>toCoord(p[0]));
-        const ys = pointsArr.map(p=>toCoord(p[1]));
+        const xs = ptsArr.map(p=>toCoord(p[0]));
+        const ys = ptsArr.map(p=>toCoord(p[1]));
         const minX = Math.min(...xs), maxX = Math.max(...xs);
         const minY = Math.min(...ys), maxY = Math.max(...ys);
         put(0, ("LA:"+label+"\n").slice(0,80));
-        put(80, ("ST:"+pointsArr.length+"\n"));
+        put(80, ("ST:"+ptsArr.length+"\n"));
         put(96, ("CO:"+numColors+"\n"));
         put(112, ("+X:"+maxX+"\n"));
         put(128, ("-X:"+minX+"\n"));
@@ -265,171 +254,176 @@ const worker = makeWorker(function(){
 
         function encode(dx,dy){
           let b1=0,b2=0,b3=0;
-          const setBits = (val, negMask, posMask) => {
-            let v = val;
-            if(v >= 64){ b3 |= posMask; v -= 64; }
-            if(v <= -64){ b3 |= negMask; v += 64; }
-            if(v >= 32){ b2 |= posMask; v -= 32; }
-            if(v <= -32){ b2 |= negMask; v += 32; }
-            if(v >= 16){ b2 |= (posMask<<1); v -= 16; }
-            if(v <= -16){ b2 |= (negMask<<1); v += 16; }
-            if(v >= 8){ b2 |= (posMask<<2); v -= 8; }
-            if(v <= -8){ b2 |= (negMask<<2); v += 8; }
-            if(v >= 4){ b1 |= posMask; v -= 4; }
-            if(v <= -4){ b1 |= negMask; v += 4; }
-            if(v >= 2){ b1 |= (posMask<<1); v -= 2; }
-            if(v <= -2){ b1 |= (negMask<<1); v += 2; }
-            if(v >= 1){ b1 |= (posMask<<2); v -= 1; }
-            if(v <= -1){ b1 |= (negMask<<2); v += 1; }
+          const setBits = (v, negMask, posMask) => {
+            let val = v;
+            if(val >= 64){ b3 |= posMask; val -= 64; }
+            if(val <= -64){ b3 |= negMask; val += 64; }
+            if(val >= 32){ b2 |= posMask; val -= 32; }
+            if(val <= -32){ b2 |= negMask; val += 32; }
+            if(val >= 16){ b2 |= (posMask<<1); val -= 16; }
+            if(val <= -16){ b2 |= (negMask<<1); val += 16; }
+            if(val >= 8){ b2 |= (posMask<<2); val -= 8; }
+            if(val <= -8){ b2 |= (negMask<<2); val += 8; }
+            if(val >= 4){ b1 |= posMask; val -= 4; }
+            if(val <= -4){ b1 |= negMask; val += 4; }
+            if(val >= 2){ b1 |= (posMask<<1); val -= 2; }
+            if(val <= -2){ b1 |= (negMask<<1); val += 2; }
+            if(val >= 1){ b1 |= (posMask<<2); val -= 1; }
+            if(val <= -1){ b1 |= (negMask<<2); val += 1; }
           };
-          setBits(dx, 0x20, 0x08); // X bits: negative mask 0x20, positive 0x08 mapped
-          setBits(dy, 0x10, 0x04); // Y bits: negative 0x10, positive 0x04 mapped
-          return [b1&0xFF,b2&0xFF,b3&0xFF];
+          setBits(dx, 0x20, 0x08); // X (neg,pos)
+          setBits(dy, 0x10, 0x04); // Y (neg,pos)
+          return [b1&0xFF, b2&0xFF, b3&0xFF];
         }
 
         const body = [];
-        let prevx = 0, prevy = 0;
-        if(pointsArr.length>0){
-          let x0 = xs[0], y0 = ys[0];
-          let dx = x0 - prevx, dy = y0 - prevy;
+        let px = 0, py = 0;
+        if(ptsArr.length > 0){
+          const x0 = xs[0], y0 = ys[0];
+          let dx = x0 - px, dy = y0 - py;
           while(Math.abs(dx) > 121 || Math.abs(dy) > 121){
             const sx = Math.max(-121, Math.min(121, dx));
             const sy = Math.max(-121, Math.min(121, dy));
             body.push(...encode(sx, sy));
-            prevx += sx; prevy += sy; dx -= sx; dy -= sy;
+            px += sx; py += sy; dx -= sx; dy -= sy;
           }
           body.push(...encode(dx, dy));
-          prevx = x0; prevy = y0;
+          px = x0; py = y0;
         }
 
-        // color breaks evenly
+        // prepare color breaks
         const breaks = [];
-        if(numColors>1){
-          const per = Math.floor(pointsArr.length / numColors);
+        if(numColors > 1){
+          const per = Math.floor(ptsArr.length / numColors);
           for(let c=1;c<numColors;c++) breaks.push(c*per);
         }
 
-        for(let i=1;i<pointsArr.length;i++){
+        for(let i=1;i<ptsArr.length;i++){
           const x = xs[i], y = ys[i];
-          let dx = x - prevx, dy = y - prevy;
+          let dx = x - px, dy = y - py;
           while(Math.abs(dx) > 121 || Math.abs(dy) > 121){
             const sx = Math.max(-121, Math.min(121, dx));
             const sy = Math.max(-121, Math.min(121, dy));
             body.push(...encode(sx, sy));
-            dx -= sx; dy -= sy; prevx += sx; prevy += sy;
+            dx -= sx; dy -= sy; px += sx; py += sy;
           }
           body.push(...encode(dx, dy));
-          prevx = x; prevy = y;
-          if(breaks.includes(i)) body.push(0x00,0x00,0xC3); // color change
+          px = x; py = y;
+          if(breaks.includes(i)) body.push(0x00,0x00,0xC3);
         }
 
-        body.push(0x00,0x00,0xF3); // end
+        body.push(0x00,0x00,0xF3);
         const arr = new Uint8Array(header.length + body.length);
         arr.set(header,0); arr.set(new Uint8Array(body), header.length);
         return arr;
       }
 
-      // create simple preview PNG via OffscreenCanvas
-      const previewCanvas = new OffscreenCanvas(w,h);
-      const pctx = previewCanvas.getContext('2d');
-      pctx.fillStyle = '#fff'; pctx.fillRect(0,0,w,h);
-      pctx.fillStyle = '#000';
-      for(let gy=0; gy<gridH; gy++){
-        for(let gx=0; gx<gridW; gx++){
-          if(cells[gy][gx]) pctx.fillRect(gx*cellSize, gy*cellSize, cellSize, cellSize);
+      // Prepare preview image: try to transfer ImageBitmap (fast)
+      let bitmap = null;
+      try{
+        if(typeof off.transferToImageBitmap === 'function'){
+          bitmap = off.transferToImageBitmap();
+        } else {
+          // fallback: create blob and convert to ArrayBuffer
+          const pngBlob = await off.convertToBlob({type:'image/png', quality:0.9});
+          const pngBuf = await pngBlob.arrayBuffer();
+          // build DST and post with png buffer transfer (both arraybuffers transferable)
+          const dstArr = buildDstArray(compressed, Math.max(1, Math.round(exportScale)), numColors, 'MOLFA_WORKER');
+          self.postMessage({ type:'done', dst: dstArr.buffer, points: compressed, w, h, pngBuf }, [dstArr.buffer, pngBuf]);
+          return;
         }
-      }
-      // draw the ordered points as polyline (serpentine points)
-      pctx.strokeStyle = '#ff0000'; pctx.lineWidth = Math.max(1, Math.round(cellSize/6));
-      pctx.beginPath();
-      for(let i=0;i<compressedPointsLength(points);i++){
-        const p = points[i];
-        if(i===0) pctx.moveTo(p[0], p[1]); else pctx.lineTo(p[0], p[1]);
-      }
-      pctx.stroke();
-
-      // Build compressed points length function to avoid repeated computation
-      function compressedPointsLength(arr){
-        // already compressed in main code we will send compressed
-        return arr.length;
+      } catch(err){
+        // ignore and proceed using blob fallback
       }
 
-      // prepare result
-      const compressedPoints = points; // points already compressed in this worker flow
-      const dstArr = buildDstArray(compressedPoints, exportScale, numColors, 'MOLFA_FROM_WORKER');
-      const pngBlob = await previewCanvas.convertToBlob({type:'image/png', quality:0.9});
-
-      // return results (transfer dst buffer)
-      self.postMessage({ dst: dstArr.buffer, points: compressedPoints, w, h, png: pngBlob }, [dstArr.buffer, pngBlob]);
+      // build DST array (Uint8Array)
+      const dstArr = buildDstArray(compressed, exportScale, numColors, 'MOLFA_WORKER');
+      if(bitmap){
+        // transfer dst buffer and bitmap (both transferable)
+        self.postMessage({ type:'done', dst: dstArr.buffer, points: compressed, w, h, bitmap }, [dstArr.buffer, bitmap]);
+      } else {
+        // should not reach here but fallback
+        const pngBlob2 = await off.convertToBlob({type:'image/png', quality:0.9});
+        const pngBuf2 = await pngBlob2.arrayBuffer();
+        self.postMessage({ type:'done', dst: dstArr.buffer, points: compressed, w, h, pngBuf: pngBuf2 }, [dstArr.buffer, pngBuf2]);
+      }
     }catch(err){
-      self.postMessage({ error: err.message || String(err) });
+      self.postMessage({ type:'error', msg: err && err.message ? err.message : String(err) });
     }
   };
 });
 
-/* ======= Main thread handling ======= */
+/* ===================== Main thread handling ===================== */
 processBtn.addEventListener('click', ()=>{
   clearLog();
-  const f = fileEl.files[0];
-  if(!f){ alert('اختر صورة'); return; }
+  const file = fileEl.files[0];
+  if(!file){ alert('اختر صورة'); return; }
   const cellSize = Math.max(2, Math.min(64, Number(cellSizeEl.value)||8));
   const stitchStep = Math.max(1, Math.min(64, Number(stitchStepEl.value)||4));
   const threshold = Number(thresholdEl.value||128);
   const exportScale = Number(exportScaleEl.value||0.2);
   const numColors = Math.max(1, Math.min(8, Number(numColorsEl.value)||1));
 
-  log('قراءة الصورة وإرسالها للمعالجة في Worker...');
+  log('تحميل الصورة وإرسالها للـWorker...');
   const reader = new FileReader();
-  reader.onload = () => {
-    worker.postMessage({
-      dataURL: reader.result,
-      cellSize, stitchStep, threshold, exportScale, numColors
-    });
+  reader.onload = ()=>{
+    worker.postMessage({ dataURL: reader.result, cellSize, stitchStep, threshold, exportScale, numColors });
   };
-  reader.readAsDataURL(f);
+  reader.onerror = (e)=> { log('خطأ قراءة الملف: ' + e); };
+  reader.readAsDataURL(file);
 });
 
-worker.onmessage = async (ev) => {
-  if(ev.data.error){ log('خطأ في المعالجة: '+ev.data.error); return; }
-  log('انتهت المعالجة في الـWorker.');
-  const pts = ev.data.points || [];
-  const w = ev.data.w, h = ev.data.h;
-  cellCountEl.textContent = Math.floor(w / Number(cellSizeEl.value)) * Math.floor(h / Number(cellSizeEl.value));
-  pointCountEl.textContent = pts.length;
-  stitchCountEl.textContent = pts.length;
+/* Handle messages from worker */
+worker.onmessage = (ev) => {
+  const m = ev.data;
+  if(!m) { log('استلمت رسالة فارغة من الـWorker'); return; }
+  if(m.type === 'error'){ log('خطأ من الـWorker: ' + m.msg); return; }
+  if(m.type !== 'done'){ log('رسالة غير متوقعة من الـWorker'); return; }
 
-  // draw preview (stitchCanvas)
+  log('انتهت المعالجة من الـWorker.');
+  const pts = m.points || [];
+  const w = m.w, h = m.h;
+
+  // Draw preview: if bitmap transferred, use it; otherwise use png buffer
   stitchCanvas.width = w; stitchCanvas.height = h;
   const sctx = stitchCanvas.getContext('2d');
   sctx.fillStyle = '#fff'; sctx.fillRect(0,0,w,h);
-  // draw raster from worker PNG if provided
-  if(ev.data.png){
-    const imgBlob = ev.data.png;
-    const url = URL.createObjectURL(imgBlob);
+
+  if(m.bitmap){
+    // when ImageBitmap is transferred
+    const bmp = m.bitmap;
+    try{
+      sctx.drawImage(bmp, 0, 0, w, h);
+    }catch(e){
+      log('خطأ رسم ImageBitmap: ' + e.message);
+    }
+  } else if(m.pngBuf){
+    // pngBuf is an ArrayBuffer
+    const blob = new Blob([m.pngBuf], {type:'image/png'});
+    const url = URL.createObjectURL(blob);
     const im = new Image();
-    im.onload = ()=>{
-      // draw raster under the path
-      sctx.drawImage(im,0,0);
-      drawPathFromPoints(sctx, pts);
-      URL.revokeObjectURL(url);
-    };
+    im.onload = ()=>{ sctx.drawImage(im,0,0,w,h); URL.revokeObjectURL(url); };
     im.src = url;
-  } else {
-    drawPathFromPoints(sctx, pts);
   }
+
+  // overlay path
+  sctx.strokeStyle = '#ef4444'; sctx.lineWidth = Math.max(1, Math.round(Number(cellSizeEl.value)/6));
+  sctx.beginPath();
+  for(let i=0;i<pts.length;i++){
+    const p = pts[i];
+    if(i===0) sctx.moveTo(p[0], p[1]); else sctx.lineTo(p[0], p[1]);
+  }
+  sctx.stroke();
 
   // mark start/end
   if(pts.length>0){
     const start = pts[0], end = pts[pts.length-1];
-    sctx.fillStyle = 'red'; sctx.beginPath(); sctx.arc(start[0], start[1], 4, 0, 2*Math.PI); sctx.fill();
-    sctx.fillStyle = '#3b82f6'; sctx.beginPath(); sctx.arc(end[0], end[1], 4, 0, 2*Math.PI); sctx.fill();
-    startPtEl.textContent = `${Math.round(start[0])}, ${Math.round(start[1])}`;
-    endPtEl.textContent = `${Math.round(end[0])}, ${Math.round(end[1])}`;
-    sizeInfoEl.textContent = `${Math.round((Math.max(...pts.map(p=>p[0]))-Math.min(...pts.map(p=>p[0])))*exportScale)} × ${Math.round((Math.max(...pts.map(p=>p[1]))-Math.min(...pts.map(p=>p[1])))*exportScale)} (units 0.1mm)`;
+    sctx.fillStyle='red'; sctx.beginPath(); sctx.arc(start[0], start[1], 4, 0, 2*Math.PI); sctx.fill();
+    sctx.fillStyle='#3b82f6'; sctx.beginPath(); sctx.arc(end[0], end[1], 4, 0, 2*Math.PI); sctx.fill();
   }
 
-  // dst buffer -> blob
-  const dstBuf = ev.data.dst;
+  // DST blob
+  const dstBuf = m.dst;
   const dstBlob = new Blob([dstBuf], {type:'application/octet-stream'});
   downloadDstBtn.onclick = ()=> {
     const url = URL.createObjectURL(dstBlob);
@@ -437,58 +431,58 @@ worker.onmessage = async (ev) => {
     URL.revokeObjectURL(url);
   };
 
-  // svg
-  const svg = buildSVGFromPoints(pts, Number(cellSizeEl.value));
-  const svgBlob = new Blob([svg], {type:'image/svg+xml'});
+  // Build SVG
+  const svgText = buildSVGFromPoints(pts, Number(cellSizeEl.value));
+  const svgBlob = new Blob([svgText], {type:'image/svg+xml'});
   downloadSvgBtn.onclick = ()=> {
     const url = URL.createObjectURL(svgBlob);
     const a = document.createElement('a'); a.href = url; a.download = 'molfa_preview.svg'; a.click();
     URL.revokeObjectURL(url);
   };
 
-  // png (worker provided)
-  downloadPngBtn.onclick = ()=> {
-    if(ev.data.png){
-      const url = URL.createObjectURL(ev.data.png);
+  // PNG download: if bitmap exists we can convert canvas to blob
+  downloadPngBtn.onclick = async ()=> {
+    stitchCanvas.toBlob((b)=> {
+      const url = URL.createObjectURL(b);
       const a = document.createElement('a'); a.href = url; a.download = 'molfa_preview.png'; a.click();
       URL.revokeObjectURL(url);
-    } else alert('PNG غير متاح');
+    }, 'image/png', 0.95);
   };
 
+  // update UI
   downloadsDiv.style.display = 'flex';
-  last = { pts, dstBlob, svgBlob };
+  legendItems.innerHTML = ''; // naive legend (single color segmentation)
+  legendItems.innerHTML = `<div style="background:#ef4444;width:28px;height:18px;border-radius:4px"></div><div style="margin-left:4px">${numColorsEl.value} لون(أ)</div>`;
+  infoBox.textContent = `خلايا: ${Math.floor(w/Number(cellSizeEl.value)) * Math.floor(h/Number(cellSizeEl.value))} • نقاط: ${pts.length} • غرز: ${pts.length}`;
+
+  lastResult = { pts, dstBlob, svgBlob };
+  log('وجاهز للتحميل.');
 };
 
-function drawPathFromPoints(ctx, pts){
-  if(!pts || pts.length===0) return;
-  ctx.strokeStyle = '#ff0000'; ctx.lineWidth = Math.max(1,1);
-  ctx.beginPath();
-  for(let i=0;i<pts.length;i++){
-    const p = pts[i];
-    if(i===0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
-  }
-  ctx.stroke();
-}
+worker.onerror = (ev) => {
+  log('خطأ عام في الـWorker: ' + (ev.message || ev));
+};
 
+/* ===================== Utilities ===================== */
 function buildSVGFromPoints(pts, cellSize){
   if(!pts) pts=[];
-  // compute bounding box
   const minX = Math.min(...pts.map(p=>p[0])), maxX = Math.max(...pts.map(p=>p[0]));
   const minY = Math.min(...pts.map(p=>p[1])), maxY = Math.max(...pts.map(p=>p[1]));
-  const w = Math.ceil(maxX - minX + cellSize), h = Math.ceil(maxY - minY + cellSize);
+  const w = Math.ceil(maxX - minX + cellSize || 100), h = Math.ceil(maxY - minY + cellSize || 100);
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${minX} ${minY} ${w} ${h}">`;
   svg += `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="white"/>`;
-  svg += `<polyline fill="none" stroke="red" stroke-width="1" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`;
+  svg += `<polyline fill="none" stroke="#ef4444" stroke-width="1" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`;
   svg += `</svg>`;
   return svg;
 }
 
-/* Reset */
+/* ===================== Reset ===================== */
 resetBtn.addEventListener('click', ()=>{
   fileEl.value=''; cellSizeEl.value=8; stitchStepEl.value=4; thresholdEl.value=128; exportScaleEl.value=0.2; numColorsEl.value=1;
   origCanvas.getContext('2d').clearRect(0,0,origCanvas.width,origCanvas.height);
   stitchCanvas.getContext('2d').clearRect(0,0,stitchCanvas.width,stitchCanvas.height);
-  downloadsDiv.style.display='none'; clearLog();
+  downloadsDiv.style.display = 'none'; legendItems.innerHTML=''; infoBox.textContent='خلايا: 0 • نقاط: 0 • غرز: 0';
+  clearLog();
 });
 
 /* init */
